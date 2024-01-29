@@ -1,0 +1,31 @@
+services:
+  server:
+    image: node:18
+    command: sh -c "npm run build && npm run serve"
+    working_dir: /usr/src/app
+    ports:
+      - 3000:3000
+      - 9227:9227 # debug
+    volumes:
+      # use local files as source
+      - .:/usr/src/app
+    environment:
+      NODE_ENV: development
+      REDIS_URL: redis://redis
+    # waits for redis to start
+    depends_on:
+      redis:
+        condition: service_healthy
+    # colorizes output
+    tty: true
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli ping']
+      interval: 1s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  node_modules:
