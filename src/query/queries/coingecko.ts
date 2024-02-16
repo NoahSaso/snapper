@@ -1,6 +1,6 @@
 import { COINGECKO_API_KEY } from '@/config'
 import { Query } from '@/types'
-import { TimeRange, getRangeConstraints, isValidTimeRange } from '@/utils'
+import { TimeRange, getRangeBounds, isValidTimeRange } from '@/utils'
 
 export const coingeckoPriceQuery: Query = {
   name: 'coingecko-price',
@@ -22,7 +22,7 @@ export const coingeckoPriceHistoryQuery: Query = {
   parameters: ['id', 'range'],
   validate: ({ range }) => isValidTimeRange(range),
   url: ({ id, range }) => {
-    const { start, end } = getRangeConstraints(range as TimeRange)
+    const { start, end } = getRangeBounds(range as TimeRange)
 
     return `https://pro-api.coingecko.com/api/v3/coins/${id}/market_chart/range?vs_currency=usd&from=${BigInt(start).toString()}&to=${BigInt(end).toString()}`
   },

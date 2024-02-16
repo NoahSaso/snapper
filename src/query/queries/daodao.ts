@@ -1,14 +1,14 @@
 import { Query } from '@/types'
-import { TimeRange, getRangeConstraints, isValidTimeRange } from '@/utils'
+import { TimeRange, getRangeBounds, isValidTimeRange } from '@/utils'
 
 export const daodaoBankBalancesHistoryQuery: Query = {
   name: 'daodao-bank-balances-history',
   parameters: ['chainId', 'address', 'range'],
   validate: ({ range }) => isValidTimeRange(range),
   url: ({ chainId, address, range }) => {
-    const { start, interval } = getRangeConstraints(range as TimeRange)
+    const { start, end } = getRangeBounds(range as TimeRange)
 
-    return `https://indexer.daodao.zone/${chainId}/wallet/${address}/bank/balances?times=${BigInt(start * 1000).toString()}..&timeStep=${BigInt(interval * 1000).toString()}`
+    return `https://indexer.daodao.zone/${chainId}/wallet/${address}/bank/balances?times=${BigInt(start * 1000).toString()}..${BigInt(end * 1000).toString()}`
   },
   // Cache for:
   // - 5 minutes when querying the past hour
@@ -27,9 +27,9 @@ export const daodaoCw20BalancesHistoryQuery: Query = {
   parameters: ['chainId', 'address', 'range'],
   validate: ({ range }) => isValidTimeRange(range),
   url: ({ chainId, address, range }) => {
-    const { start, interval } = getRangeConstraints(range as TimeRange)
+    const { start, end } = getRangeBounds(range as TimeRange)
 
-    return `https://indexer.daodao.zone/${chainId}/wallet/${address}/tokens/list?times=${BigInt(start * 1000).toString()}..&timeStep=${BigInt(interval * 1000).toString()}`
+    return `https://indexer.daodao.zone/${chainId}/wallet/${address}/tokens/list?times=${BigInt(start * 1000).toString()}..${BigInt(end * 1000).toString()}`
   },
   // Cache for:
   // - 5 minutes when querying the past hour
@@ -48,9 +48,9 @@ export const daodaoCommunityPoolHistoryQuery: Query = {
   parameters: ['chainId', 'range'],
   validate: ({ range }) => isValidTimeRange(range),
   url: ({ chainId, range }) => {
-    const { start, interval } = getRangeConstraints(range as TimeRange)
+    const { start, end } = getRangeBounds(range as TimeRange)
 
-    return `https://indexer.daodao.zone/${chainId}/generic/_/communityPool/balances?times=${BigInt(start * 1000).toString()}..&timeStep=${BigInt(interval * 1000).toString()}`
+    return `https://indexer.daodao.zone/${chainId}/generic/_/communityPool/balances?times=${BigInt(start * 1000).toString()}..${BigInt(end * 1000).toString()}`
   },
   // Cache for:
   // - 5 minutes when querying the past hour
