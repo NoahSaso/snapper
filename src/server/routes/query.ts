@@ -22,18 +22,20 @@ export const query: MiddlewareHandler = async (request, response) => {
       return
     }
 
-    try {
-      const valid = await query.validate?.(request.query_parameters)
-      if (!valid) {
-        throw new Error('invalid parameters')
+    if (query.validate) {
+      try {
+        const valid = await query.validate?.(request.query_parameters)
+        if (!valid) {
+          throw new Error('invalid parameters')
+        }
+      } catch (error) {
+        response
+          .status(400)
+          .send(
+            error instanceof Error ? error.message : `unknown error: ${error}`
+          )
+        return
       }
-    } catch (error) {
-      response
-        .status(400)
-        .send(
-          error instanceof Error ? error.message : `unknown error: ${error}`
-        )
-      return
     }
   }
 
