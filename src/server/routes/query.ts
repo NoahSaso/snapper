@@ -1,11 +1,10 @@
 import { MiddlewareHandler } from 'hyper-express'
 
-import { queries } from '../queries'
-import { fetchQuery, getQueryState } from '../query'
+import { fetchQuery, getQuery, getQueryState } from '@/query'
 
 export const query: MiddlewareHandler = async (request, response) => {
   const queryName = request.path_parameters.query
-  const query = queries.find((q) => q.name === queryName)
+  const query = getQuery(queryName)
   if (!query) {
     response.status(404).send(`query "${queryName}" not found`)
     return

@@ -71,6 +71,9 @@ body. Its second argument is the query's parameters.
 it will be called with the query's parameters as arguments and the result will
 be used.
 
+**`revalidate`** is an optional boolean that determines whether or not this
+query should be revalidated by the revalidate script. Defaults to `true`.
+
 ## Usage
 
 Run the server:
@@ -83,6 +86,26 @@ Perform a query:
 
 ```sh
 curl -X GET http://localhost:3000/q/query_name?parameter=value
+```
+
+Run the revalidator:
+
+```sh
+npm run revalidate
+```
+
+Run the server and revalidator with pm2:
+
+```sh
+npm run start
+```
+
+### Production
+
+Run the server and revalidator with pm2 in production (daemon mode):
+
+```sh
+npm run start:prod
 ```
 
 ## Testing

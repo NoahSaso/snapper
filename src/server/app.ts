@@ -1,7 +1,8 @@
 import cors from 'cors'
 import { Server } from 'hyper-express'
 
-import { HOST, PORT } from './config'
+import { HOST, PORT } from '@/config'
+
 import { query } from './routes'
 
 const server = new Server()
@@ -18,6 +19,11 @@ const serve = async () => {
   await server.listen(PORT, HOST)
 
   console.log(`Listening on ${PORT}...`)
+
+  // Tell pm2 we're ready.
+  if (process.send) {
+    process.send('ready')
+  }
 }
 
 serve()
