@@ -22,7 +22,7 @@ export const coingeckoPriceHistoryQuery: Query = {
   url: ({ id, range }) => {
     // unix since epoch in seconds
     let from
-    let to = Date.now() / 1000
+    let to = Math.floor(Date.now() / 1000)
     switch (range) {
       case 'year':
         from = to - 365 * 24 * 60 * 60

@@ -36,7 +36,11 @@ export const daodaoBankBalancesHistoryQuery: Query = {
     }
 
     const start = new Date(Date.now() - (rangeDuration[range as Range] || 0))
-    start.setHours(0, 0, 0, 0)
+    if (range === 'hour') {
+      start.setMinutes(0, 0, 0)
+    } else {
+      start.setHours(0, 0, 0, 0)
+    }
     const startUnixMs = start.getTime()
 
     return `https://indexer.daodao.zone/${chainId}/wallet/${address}/bank/balances?times=${BigInt(startUnixMs).toString()}..&timeStep=${BigInt(stepMs).toString()}`
@@ -62,7 +66,11 @@ export const daodaoCw20BalancesHistoryQuery: Query = {
     }
 
     const start = new Date(Date.now() - (rangeDuration[range as Range] || 0))
-    start.setHours(0, 0, 0, 0)
+    if (range === 'hour') {
+      start.setMinutes(0, 0, 0)
+    } else {
+      start.setHours(0, 0, 0, 0)
+    }
     const startUnixMs = start.getTime()
 
     return `https://indexer.daodao.zone/${chainId}/wallet/${address}/tokens/list?times=${BigInt(startUnixMs).toString()}..&timeStep=${BigInt(stepMs).toString()}`
@@ -88,7 +96,11 @@ export const daodaoCommunityPoolHistoryQuery: Query = {
     }
 
     const start = new Date(Date.now() - (rangeDuration[range as Range] || 0))
-    start.setHours(0, 0, 0, 0)
+    if (range === 'hour') {
+      start.setMinutes(0, 0, 0)
+    } else {
+      start.setHours(0, 0, 0, 0)
+    }
     const startUnixMs = start.getTime()
 
     return `https://indexer.daodao.zone/${chainId}/generic/_/communityPool/balances?times=${BigInt(startUnixMs).toString()}..&timeStep=${BigInt(stepMs).toString()}`
