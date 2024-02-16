@@ -1,7 +1,7 @@
 import cors from 'cors'
 import { Server } from 'hyper-express'
 
-import { HOST, PORT } from '@/config'
+import { ALLOWED_ORIGINS, HOST, PORT } from '@/config'
 
 import { query } from './routes'
 
@@ -9,7 +9,9 @@ const server = new Server()
 
 server.use(
   cors({
-    origin: ['http://localhost:3000'],
+    origin: ALLOWED_ORIGINS.length
+      ? ALLOWED_ORIGINS.map((origin) => new RegExp(origin))
+      : undefined,
   })
 )
 
