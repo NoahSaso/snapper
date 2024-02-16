@@ -1,10 +1,14 @@
+import { COINGECKO_API_KEY } from '@/config'
 import { Query } from '@/types'
 
 export const coingeckoPriceQuery: Query = {
   name: 'coingecko-price',
   parameters: ['id'],
   url: ({ id }) =>
-    `https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd&x_cg_demo_api_key=CG-2kpMwLzH6oMgx1zJ5G8P7eeQ`,
+    `https://pro-api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd`,
+  headers: {
+    'x-cg-pro-api-key': COINGECKO_API_KEY,
+  },
   transform: (body, { id }) => (body[id] as { usd: number }).usd,
   // Cache price for 5 minutes.
   ttl: 5 * 60,
@@ -40,7 +44,10 @@ export const coingeckoPriceHistoryQuery: Query = {
         throw new Error(`invalid range: ${range}`)
     }
 
-    return `https://api.coingecko.com/api/v3/coins/${id}/market_chart/range?vs_currency=usd&from=${from.toString()}&to=${to.toString()}&x_cg_demo_api_key=CG-2kpMwLzH6oMgx1zJ5G8P7eeQ`
+    return `https://pro-api.coingecko.com/api/v3/coins/${id}/market_chart/range?vs_currency=usd&from=${from.toString()}&to=${to.toString()}`
+  },
+  headers: {
+    'x-cg-pro-api-key': COINGECKO_API_KEY,
   },
   transform: (body) => body.prices,
   // Cache for:

@@ -10,13 +10,19 @@ directly, cached, and then returned.
 
 ## Setup
 
-First, [install Redis](https://redis.io/docs/install/install-redis/).
+1. Install [Redis](https://redis.io/docs/install/install-redis/).
 
-Then, install the server's packages:
+2. Install the server's packages:
 
-```sh
-npm install
-```
+   ```sh
+   npm install
+   ```
+
+3. Copy .env.example to .env and configure the environment variables.
+
+   ```sh
+   cp .env.example .env
+   ```
 
 ### Configure server
 
