@@ -23,7 +23,10 @@ export const query: MiddlewareHandler = async (request, response) => {
     }
 
     try {
-      await query.validate?.(request.query_parameters)
+      const valid = await query.validate?.(request.query_parameters)
+      if (!valid) {
+        throw new Error('invalid parameters')
+      }
     } catch (error) {
       response
         .status(400)

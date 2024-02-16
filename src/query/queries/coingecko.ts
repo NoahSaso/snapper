@@ -1,5 +1,6 @@
 import { COINGECKO_API_KEY } from '@/config'
 import { Query } from '@/types'
+import { TimeRange, getRangeConstraints, isValidTimeRange } from '@/utils'
 
 export const coingeckoPriceQuery: Query = {
   name: 'coingecko-price',
@@ -17,34 +18,11 @@ export const coingeckoPriceQuery: Query = {
 export const coingeckoPriceHistoryQuery: Query = {
   name: 'coingecko-price-history',
   parameters: ['id', 'range'],
-  validate: ({ range }) =>
-    !['year', 'month', 'week', 'day', 'hour'].includes(range),
+  validate: ({ range }) => isValidTimeRange(range),
   url: ({ id, range }) => {
-    // unix since epoch in seconds
-    let from
-    let to = Math.floor(Date.now() / 1000)
-    switch (range) {
-      case 'year':
-        from = to - 365 * 24 * 60 * 60
-        break
-      case 'month':
-        from = to - 30 * 24 * 60 * 60
-        break
-      case 'week':
-        from = to - 7 * 24 * 60 * 60
-        break
-      case 'day':
-        from = to - 24 * 60 * 60
-        break
-      case 'hour':
-        from = to - 60 * 60
-        break
-      default:
-        // Should never happen because of validation above.
-        throw new Error(`invalid range: ${range}`)
-    }
+    const { start, end } = getRangeConstraints(range as TimeRange)
 
-    return `https://pro-api.coingecko.com/api/v3/coins/${id}/market_chart/range?vs_currency=usd&from=${from.toString()}&to=${to.toString()}`
+    return `https://pro-api.coingecko.com/api/v3/coins/${id}/market_chart/range?vs_currency=usd&from=${BigInt(start).toString()}&to=${BigInt(end).toString()}`
   },
   headers: {
     'x-cg-pro-api-key': COINGECKO_API_KEY,

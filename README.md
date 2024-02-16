@@ -57,8 +57,9 @@ query takes parameters, a separate response will be cached for each unique set
 of parameters. You likely want to use these parameters in the URL function.
 
 **`validate`** is an optional function that validates the parameters. If it
-throws an error, the query will not be fetched and the error will be returned in
-the response.
+throws or returns an error, the query will not be fetched and the error will be
+returned in the response. If it returns `false`, a generic error will be
+returned.
 
 **`method`** is the optional HTTP method for the request. Defaults to `GET`.
 

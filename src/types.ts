@@ -9,9 +9,10 @@ export type Query = {
    */
   parameters?: string[]
   /**
-   * Parameter validation function. Errors thrown will be sent in the response.
+   * Parameter validation function. Errors thrown or returned will be sent in
+   * the response. If it returns `false`, a generic error will be sent.
    */
-  validate?: (params: Record<string, string>) => void
+  validate?: (params: Record<string, string>) => boolean | Error
   /**
    * The URL method for the query. Defaults to GET.
    */
