@@ -10,9 +10,9 @@
     "build": "tsc && tsc-alias",
     "serve": "node dist/server/app.js",
     "revalidate": "node dist/scripts/revalidate.js",
-    "start": "pm2 start ecosystem.config.js --no-daemon",
+    "start": "pm2 reload ecosystem.config.js --no-daemon",
     "start:dev": "docker compose -f compose.dev.yml up --exit-code-from app",
-    "start:prod": "pm2 start ecosystem.config.js"
+    "start:prod": "pm2 reload ecosystem.config.js"
   },
   "license": "AGPL-3.0-only",
   "devDependencies": {
