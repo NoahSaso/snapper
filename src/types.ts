@@ -41,10 +41,10 @@ export type Query = {
    */
   ttl: number | ((params: Record<string, string>) => number)
   /**
-   * Whether or not to automatically revalidate the query when it expires.
-   * Defaults to true.
+   * Whether or not to automatically revalidate the query when it expires, or a
+   * function to get it. Defaults to true.
    */
-  revalidate?: boolean
+  revalidate?: boolean | ((params: Record<string, string>) => boolean)
 }
 
 export type QueryState = {

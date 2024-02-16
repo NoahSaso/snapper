@@ -36,7 +36,8 @@ const revalidate = async () => {
 
   try {
     const almostExpiredQueries = (await findAlmostExpiredQueries(ratio)).filter(
-      ({ query: { revalidate = true } }) => revalidate
+      ({ query: { revalidate = true }, parameters }) =>
+        typeof revalidate === 'function' ? revalidate(parameters) : revalidate
     )
 
     if (almostExpiredQueries.length > 0) {

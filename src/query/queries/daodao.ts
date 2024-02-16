@@ -15,7 +15,11 @@ export const daodaoBankBalancesHistoryQuery: Query = {
   // - 1 hour when querying the past day
   // - 1 day when querying the rest
   ttl: ({ range }) =>
-    range === 'hour' ? 60 : range === 'day' ? 60 * 60 : 24 * 60 * 60,
+    range === TimeRange.Hour
+      ? 60
+      : range === TimeRange.Day
+        ? 60 * 60
+        : 24 * 60 * 60,
 }
 
 export const daodaoCw20BalancesHistoryQuery: Query = {
@@ -32,7 +36,11 @@ export const daodaoCw20BalancesHistoryQuery: Query = {
   // - 1 hour when querying the past day
   // - 1 day when querying the rest
   ttl: ({ range }) =>
-    range === 'hour' ? 60 : range === 'day' ? 60 * 60 : 24 * 60 * 60,
+    range === TimeRange.Hour
+      ? 60
+      : range === TimeRange.Day
+        ? 60 * 60
+        : 24 * 60 * 60,
 }
 
 export const daodaoCommunityPoolHistoryQuery: Query = {
@@ -49,5 +57,9 @@ export const daodaoCommunityPoolHistoryQuery: Query = {
   // - 1 hour when querying the past day
   // - 1 day when querying the rest
   ttl: ({ range }) =>
-    range === 'hour' ? 60 : range === 'day' ? 60 * 60 : 24 * 60 * 60,
+    range === TimeRange.Hour
+      ? 60
+      : range === TimeRange.Day
+        ? 60 * 60
+        : 24 * 60 * 60,
 }

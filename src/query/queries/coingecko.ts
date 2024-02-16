@@ -13,6 +13,8 @@ export const coingeckoPriceQuery: Query = {
   transform: (body, { id }) => (body[id] as { usd: number }).usd,
   // Cache price for 5 minutes.
   ttl: 5 * 60,
+  // No need to auto-revalidate since this query is quick.
+  revalidate: false,
 }
 
 export const coingeckoPriceHistoryQuery: Query = {
@@ -33,5 +35,13 @@ export const coingeckoPriceHistoryQuery: Query = {
   // - 1 hour when querying the past day
   // - 1 day when querying the rest
   ttl: ({ range }) =>
-    range === 'hour' ? 60 : range === 'day' ? 60 * 60 : 24 * 60 * 60,
+    range === TimeRange.Hour
+      ? 60
+      : range === TimeRange.Day
+        ? 60 * 60
+        : 24 * 60 * 60,
+  // No need to auto-revalidate all the time since this query is quick, and it
+  // wastes our rate limit. Only revalidate the larger ranges.
+  revalidate: ({ range }) =>
+    range !== TimeRange.Hour && range !== TimeRange.Day,
 }

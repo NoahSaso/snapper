@@ -79,7 +79,9 @@ it will be called with the query's parameters as arguments and the result will
 be used.
 
 **`revalidate`** is an optional boolean that determines whether or not this
-query should be revalidated by the revalidate script. Defaults to `true`.
+query should be revalidated by the revalidate script. If it's a function
+(instead of a boolean), it will be called with the query's parameters as
+arguments and the result will be used. Defaults to `true`.
 
 ## Usage
 
