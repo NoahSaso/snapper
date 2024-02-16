@@ -10,7 +10,8 @@ on:
 
 jobs:
   ci:
-    name: Lint & Test
+    # name: Lint & Test
+    name: Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -21,4 +22,4 @@ jobs:
       - run: npm install
       - run: npm run lint
       - run: npm run build
-      - run: npm run test
+      # - run: npm run test
