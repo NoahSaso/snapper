@@ -46,7 +46,7 @@ export const daodaoBankBalancesHistoryQuery: Query<
     return `https://indexer.daodao.zone/${chainId}/wallet/${address}/bank/balances?times=${BigInt(start * 1000).toString()}..${BigInt(end * 1000).toString()}&timeStep=${BigInt(interval * 1000).toString()}`
   },
   // Cache for:
-  // - 5 minutes when querying the past hour
+  // - 1 minute when querying the past hour
   // - 1 hour when querying the past day
   // - 1 day when querying the rest
   ttl: ({ range }) =>
@@ -55,6 +55,9 @@ export const daodaoBankBalancesHistoryQuery: Query<
       : range === TimeRange.Day
         ? 60 * 60
         : 24 * 60 * 60,
+  // No need to auto-revalidate for short ranges.
+  revalidate: ({ range }) =>
+    range !== TimeRange.Hour && range !== TimeRange.Day,
 }
 
 export const daodaoCw20BalancesHistoryQuery: Query<
@@ -89,7 +92,7 @@ export const daodaoCw20BalancesHistoryQuery: Query<
     return `https://indexer.daodao.zone/${chainId}/wallet/${address}/tokens/list?times=${BigInt(start * 1000).toString()}..${BigInt(end * 1000).toString()}&timeStep=${BigInt(interval * 1000).toString()}`
   },
   // Cache for:
-  // - 5 minutes when querying the past hour
+  // - 1 minute when querying the past hour
   // - 1 hour when querying the past day
   // - 1 day when querying the rest
   ttl: ({ range }) =>
@@ -98,6 +101,9 @@ export const daodaoCw20BalancesHistoryQuery: Query<
       : range === TimeRange.Day
         ? 60 * 60
         : 24 * 60 * 60,
+  // No need to auto-revalidate for short ranges.
+  revalidate: ({ range }) =>
+    range !== TimeRange.Hour && range !== TimeRange.Day,
 }
 
 export const daodaoCommunityPoolHistoryQuery: Query<
@@ -131,7 +137,7 @@ export const daodaoCommunityPoolHistoryQuery: Query<
     return `https://indexer.daodao.zone/${chainId}/generic/_/communityPool/balances?times=${BigInt(start * 1000).toString()}..${BigInt(end * 1000).toString()}&timeStep=${BigInt(interval * 1000).toString()}`
   },
   // Cache for:
-  // - 5 minutes when querying the past hour
+  // - 1 minute when querying the past hour
   // - 1 hour when querying the past day
   // - 1 day when querying the rest
   ttl: ({ range }) =>
@@ -140,6 +146,9 @@ export const daodaoCommunityPoolHistoryQuery: Query<
       : range === TimeRange.Day
         ? 60 * 60
         : 24 * 60 * 60,
+  // No need to auto-revalidate for short ranges.
+  revalidate: ({ range }) =>
+    range !== TimeRange.Hour && range !== TimeRange.Day,
 }
 
 /**
@@ -338,10 +347,13 @@ export const daodaoValueHistoryQuery: Query<
   // - 1 day when querying the rest
   ttl: ({ range }) =>
     range === TimeRange.Hour
-      ? 60
+      ? 5 * 60
       : range === TimeRange.Day
         ? 60 * 60
         : 24 * 60 * 60,
+  // No need to auto-revalidate for short ranges.
+  revalidate: ({ range }) =>
+    range !== TimeRange.Hour && range !== TimeRange.Day,
 }
 
 export const daodaoManyValueHistoryQuery: Query<
@@ -498,8 +510,11 @@ export const daodaoManyValueHistoryQuery: Query<
   // - 1 day when querying the rest
   ttl: ({ range }) =>
     range === TimeRange.Hour
-      ? 60
+      ? 5 * 60
       : range === TimeRange.Day
         ? 60 * 60
         : 24 * 60 * 60,
+  // No need to auto-revalidate for short ranges.
+  revalidate: ({ range }) =>
+    range !== TimeRange.Hour && range !== TimeRange.Day,
 }
