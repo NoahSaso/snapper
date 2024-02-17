@@ -2,7 +2,7 @@ import axios, { AxiosError } from 'axios'
 import stringify from 'json-stringify-deterministic'
 
 import { redis } from '@/config'
-import { Query, QueryState } from '@/types'
+import { FetchQuery, Query, QueryState, QueryType } from '@/types'
 
 import { queries } from './queries'
 
@@ -29,38 +29,52 @@ export const getQueryState = async (
 /**
  * Fetch the query, store it in the cache, and return the state.
  */
-export const fetchQuery = async (
+export const fetchQuery: FetchQuery = async (
   query: Query,
   params: Record<string, string>
 ): Promise<QueryState> => {
-  const url = typeof query.url === 'function' ? query.url(params) : query.url
-  const headers =
-    typeof query.headers === 'function' ? query.headers(params) : query.headers
   const ttl = typeof query.ttl === 'function' ? query.ttl(params) : query.ttl
 
-  let response
-  try {
-    response = await (query.method === 'POST' ? axios.post : axios.get)(url, {
-      headers,
-    })
-  } catch (error) {
-    // manually capture rate limits
-    if (error instanceof AxiosError) {
-      if (error.response?.status === 429) {
-        throw new Error('429 too many requests')
+  let queryState: QueryState
+  if (query.type === QueryType.Url) {
+    const url = typeof query.url === 'function' ? query.url(params) : query.url
+    const headers =
+      typeof query.headers === 'function'
+        ? query.headers(params)
+        : query.headers
+
+    let response
+    try {
+      response = await (query.method === 'POST' ? axios.post : axios.get)(url, {
+        headers,
+      })
+    } catch (error) {
+      // manually capture rate limits
+      if (error instanceof AxiosError) {
+        if (error.response?.status === 429) {
+          throw new Error('429 too many requests')
+        }
       }
+
+      throw error
     }
 
-    throw error
-  }
+    const body = query.transform?.(response.data, params) || response.data
 
-  const body = query.transform?.(response.data, params) || response.data
-
-  const queryState: QueryState = {
-    status: response.status,
-    statusText: response.statusText,
-    body,
-    fetchedAt: Date.now(),
+    queryState = {
+      status: response.status,
+      statusText: response.statusText,
+      body,
+      fetchedAt: Date.now(),
+    }
+  } else if (query.type === QueryType.Custom) {
+    const body = await query.execute(params, fetchQuery)
+    queryState = {
+      body,
+      fetchedAt: Date.now(),
+    }
+  } else {
+    throw new Error(`invalid query type: ${query['type']}`)
   }
 
   if (ttl) {

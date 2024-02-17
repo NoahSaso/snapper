@@ -1,8 +1,9 @@
 import { COINGECKO_API_KEY } from '@/config'
-import { Query } from '@/types'
+import { Query, QueryType } from '@/types'
 import { TimeRange, getRangeBounds, isValidTimeRange } from '@/utils'
 
 export const coingeckoPriceQuery: Query = {
+  type: QueryType.Url,
   name: 'coingecko-price',
   parameters: ['id'],
   url: ({ id }) =>
@@ -18,6 +19,7 @@ export const coingeckoPriceQuery: Query = {
 }
 
 export const coingeckoPriceHistoryQuery: Query = {
+  type: QueryType.Url,
   name: 'coingecko-price-history',
   parameters: ['id', 'range'],
   validate: ({ range }) => isValidTimeRange(range),

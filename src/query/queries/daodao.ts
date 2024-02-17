@@ -1,7 +1,8 @@
-import { Query } from '@/types'
+import { Query, QueryType } from '@/types'
 import { TimeRange, getRangeBounds, isValidTimeRange } from '@/utils'
 
 export const daodaoBankBalancesHistoryQuery: Query = {
+  type: QueryType.Url,
   name: 'daodao-bank-balances-history',
   parameters: ['chainId', 'address', 'range'],
   validate: ({ range }) => isValidTimeRange(range),
@@ -23,6 +24,7 @@ export const daodaoBankBalancesHistoryQuery: Query = {
 }
 
 export const daodaoCw20BalancesHistoryQuery: Query = {
+  type: QueryType.Url,
   name: 'daodao-cw20-balances-history',
   parameters: ['chainId', 'address', 'range'],
   validate: ({ range }) => isValidTimeRange(range),
@@ -44,6 +46,7 @@ export const daodaoCw20BalancesHistoryQuery: Query = {
 }
 
 export const daodaoCommunityPoolHistoryQuery: Query = {
+  type: QueryType.Url,
   name: 'daodao-community-pool-history',
   parameters: ['chainId', 'range'],
   validate: ({ range }) => isValidTimeRange(range),

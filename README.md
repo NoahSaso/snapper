@@ -37,17 +37,22 @@ PORT=3000
 REDIS_URL=redis://localhost:6379
 ```
 
-### Configure queries
+## Queries
 
 Add your own queries to the `src/server/queries` directory, and make sure to add
 them to the `src/server/queries/index.ts` file.
 
-#### Adding a new query
+### Adding a new query
 
-Adding a new query is very simple. You just need to set its name, any
-parameters, URL, and cache TTL. You can optionally configure queries further,
-such as adding headers or transforming the response body. See the type in the
-`src/types.ts` file for more details.
+Adding a new query is very simple. For a normal URL query, you just need to set
+its name, any parameters, URL, and cache TTL. A custom query is similar,
+requiring an execute function instead of a URL. You can optionally configure
+queries further, such as adding headers or transforming the response body. See
+the type in the `src/types.ts` file for more details.
+
+#### All queries support:
+
+**`type`** is the type of the query (URL or Custom).
 
 **`name`** is the name of the query, which will be used in the query route and
 also in the cache key.
@@ -60,6 +65,17 @@ of parameters. You likely want to use these parameters in the URL function.
 throws or returns an error, the query will not be fetched and the error will be
 returned in the response. If it returns `false`, a generic error will be
 returned.
+
+**`ttl`** is the cache TTL in seconds. If it's a function (instead of a number),
+it will be called with the query's parameters as arguments and the result will
+be used.
+
+**`revalidate`** is an optional boolean that determines whether or not this
+query should be revalidated by the revalidate script. If it's a function
+(instead of a boolean), it will be called with the query's parameters as
+arguments and the result will be used. Defaults to `true`.
+
+#### URL queries support:
 
 **`method`** is the optional HTTP method for the request. Defaults to `GET`.
 
@@ -74,14 +90,12 @@ arguments and the result will be used.
 **`transform`** is an optional function that transforms the query's response
 body. Its second argument is the query's parameters.
 
-**`ttl`** is the cache TTL in seconds. If it's a function (instead of a number),
-it will be called with the query's parameters as arguments and the result will
-be used.
+#### Custom queries support:
 
-**`revalidate`** is an optional boolean that determines whether or not this
-query should be revalidated by the revalidate script. If it's a function
-(instead of a boolean), it will be called with the query's parameters as
-arguments and the result will be used. Defaults to `true`.
+**`execute`** is the function that will be called to execute the query. It will
+be called with the query's parameters and a function that lets you get the
+result of other queries. This is powerful, as it lets you compose other queries
+into new queries.
 
 ## Usage
 
