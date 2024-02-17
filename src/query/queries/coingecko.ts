@@ -28,14 +28,21 @@ export const coingeckoPriceHistoryQuery: Query<
   {
     id: string
     range: TimeRange
+    // Optionally specify an end timestamp.
+    end?: string
   }
 > = {
   type: QueryType.Url,
   name: 'coingecko-price-history',
   parameters: ['id', 'range'],
-  validate: ({ range }) => isValidTimeRange(range),
-  url: ({ id, range }) => {
-    const { start, end } = getRangeBounds(range as TimeRange)
+  optionalParameters: ['end'],
+  validate: ({ range, end }) =>
+    isValidTimeRange(range) && !isNaN(Number(end)) && Number(end) > 0,
+  url: ({ id, range, end: endTime }) => {
+    const { start, end } = getRangeBounds(
+      range,
+      endTime ? new Date(Number(endTime)) : undefined
+    )
 
     return `https://pro-api.coingecko.com/api/v3/coins/${id}/market_chart/range?vs_currency=usd&from=${BigInt(start).toString()}&to=${BigInt(end).toString()}`
   },

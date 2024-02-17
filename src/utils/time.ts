@@ -22,10 +22,10 @@ const rangeDuration: Record<TimeRange, number> = {
 }
 
 /**
- * Get the bounds in seconds of a given range.
+ * Get the bounds in seconds of a given range. Optionally override the end time.
+ * Defaults the end to the current time.
  */
-export const getRangeBounds = (range: TimeRange) => {
-  const endDate = new Date()
+export const getRangeBounds = (range: TimeRange, endDate = new Date()) => {
   // Snap to a reasonable point in time.
   switch (range) {
     case TimeRange.Hour:

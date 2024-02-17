@@ -24,14 +24,21 @@ export const daodaoBankBalancesHistoryQuery: Query<
     chainId: string
     address: string
     range: TimeRange
+    // Optionally specify an end timestamp.
+    end?: string
   }
 > = {
   type: QueryType.Url,
   name: 'daodao-bank-balances-history',
   parameters: ['chainId', 'address', 'range'],
-  validate: ({ range }) => isValidTimeRange(range),
-  url: ({ chainId, address, range }) => {
-    const { start, end } = getRangeBounds(range)
+  optionalParameters: ['end'],
+  validate: ({ range, end }) =>
+    isValidTimeRange(range) && !isNaN(Number(end)) && Number(end) > 0,
+  url: ({ chainId, address, range, end: endTime }) => {
+    const { start, end } = getRangeBounds(
+      range,
+      endTime ? new Date(Number(endTime)) : undefined
+    )
 
     return `https://indexer.daodao.zone/${chainId}/wallet/${address}/bank/balances?times=${BigInt(start * 1000).toString()}..${BigInt(end * 1000).toString()}`
   },
@@ -59,14 +66,21 @@ export const daodaoCw20BalancesHistoryQuery: Query<
     chainId: string
     address: string
     range: TimeRange
+    // Optionally specify an end timestamp.
+    end?: string
   }
 > = {
   type: QueryType.Url,
   name: 'daodao-cw20-balances-history',
   parameters: ['chainId', 'address', 'range'],
-  validate: ({ range }) => isValidTimeRange(range),
-  url: ({ chainId, address, range }) => {
-    const { start, end } = getRangeBounds(range)
+  optionalParameters: ['end'],
+  validate: ({ range, end }) =>
+    isValidTimeRange(range) && !isNaN(Number(end)) && Number(end) > 0,
+  url: ({ chainId, address, range, end: endTime }) => {
+    const { start, end } = getRangeBounds(
+      range,
+      endTime ? new Date(Number(endTime)) : undefined
+    )
 
     return `https://indexer.daodao.zone/${chainId}/wallet/${address}/tokens/list?times=${BigInt(start * 1000).toString()}..${BigInt(end * 1000).toString()}`
   },
@@ -93,14 +107,21 @@ export const daodaoCommunityPoolHistoryQuery: Query<
   {
     chainId: string
     range: TimeRange
+    // Optionally specify an end timestamp.
+    end?: string
   }
 > = {
   type: QueryType.Url,
   name: 'daodao-community-pool-history',
   parameters: ['chainId', 'range'],
-  validate: ({ range }) => isValidTimeRange(range),
-  url: ({ chainId, range }) => {
-    const { start, end } = getRangeBounds(range)
+  optionalParameters: ['end'],
+  validate: ({ range, end }) =>
+    isValidTimeRange(range) && !isNaN(Number(end)) && Number(end) > 0,
+  url: ({ chainId, range, end: endTime }) => {
+    const { start, end } = getRangeBounds(
+      range,
+      endTime ? new Date(Number(endTime)) : undefined
+    )
 
     return `https://indexer.daodao.zone/${chainId}/generic/_/communityPool/balances?times=${BigInt(start * 1000).toString()}..${BigInt(end * 1000).toString()}`
   },
@@ -146,6 +167,7 @@ export const daodaoValueHistoryQuery: Query<
   parameters: ['chainId', 'address', 'range'],
   validate: ({ range }) => isValidTimeRange(range),
   execute: async ({ chainId, address, range }, query) => {
+    const end = Date.now().toString()
     const isCommunityPool = address === COMMUNITY_POOL_ADDRESS_PLACEHOLDER
 
     const [{ body: nativeBody }, { body: cw20Body }] = await Promise.all([
@@ -153,16 +175,19 @@ export const daodaoValueHistoryQuery: Query<
         ? query(daodaoCommunityPoolHistoryQuery, {
             chainId,
             range,
+            end,
           })
         : query(daodaoBankBalancesHistoryQuery, {
             chainId,
             address,
             range,
+            end,
           }),
       query(daodaoCw20BalancesHistoryQuery, {
         chainId,
         address,
         range,
+        end,
       }),
     ])
 
@@ -194,6 +219,7 @@ export const daodaoValueHistoryQuery: Query<
           const { body: prices } = await query(coingeckoPriceHistoryQuery, {
             id: asset.coingeckoID,
             range,
+            end,
           })
 
           const balances = cw20
@@ -234,9 +260,14 @@ export const daodaoValueHistoryQuery: Query<
       )
     ).flatMap((data) => data || [])
 
-    // All prices have similar timestamps since they us the same range (though
-    // they may have been cached at different times), so just use the first one.
-    const timestamps = assets[0]?.prices.map(({ timestamp }) => timestamp) || []
+    // All prices have similar timestamps since they use the same range (though
+    // they may have been cached at different times), so choose the one with the
+    // most timestamps available.
+    const assetWithLongestPrices = assets.reduce((acc, asset) =>
+      asset.prices.length > acc.prices.length ? acc : asset
+    )
+    const timestamps =
+      assetWithLongestPrices?.prices.map(({ timestamp }) => timestamp) || []
 
     const snapshots = timestamps.flatMap((timestamp) => {
       // Order of values in each snapshot matches order of assets.
@@ -250,15 +281,6 @@ export const daodaoValueHistoryQuery: Query<
 
         return { price, balance, value }
       })
-
-      // Only keep snapshots where all assets have a price and value.
-      if (
-        values.some(
-          ({ price, value }) => price === undefined || value === undefined
-        )
-      ) {
-        return []
-      }
 
       const totalValue = values.reduce(
         (acc, { value }) => acc + (value || 0),
