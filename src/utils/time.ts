@@ -21,6 +21,19 @@ const rangeDuration: Record<TimeRange, number> = {
   [TimeRange.Hour]: 60 * 60,
 }
 
+// The interval in seconds returned for a given range from CoinGecko.
+// https://www.coingecko.com/api/documentation
+const rangeInterval: Record<TimeRange, number> = {
+  // Daily.
+  [TimeRange.Year]: 24 * 60 * 60,
+  // Hourly.
+  [TimeRange.Month]: 60 * 60,
+  [TimeRange.Week]: 60 * 60,
+  // Five minutes.
+  [TimeRange.Day]: 5 * 60,
+  [TimeRange.Hour]: 5 * 60,
+}
+
 /**
  * Get the bounds in seconds of a given range. Optionally override the end time.
  * Defaults the end to the current time.
@@ -41,7 +54,10 @@ export const getRangeBounds = (range: TimeRange, endDate = new Date()) => {
 
   // Floor is redundant since snapping above should clear milliseconds.
   const end = Math.floor(endDate.getTime() / 1000)
-  const start = end - rangeDuration[range]
+  // Add additional buffer (two extra intervals) to the start time to account
+  // for mismatching timestamps returned from CoinGecko for the same range with
+  // different tokens.
+  const start = end - rangeDuration[range] - rangeInterval[range] * 2
 
   return {
     start,

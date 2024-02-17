@@ -263,11 +263,20 @@ export const daodaoValueHistoryQuery: Query<
     // All prices have similar timestamps since they use the same range (though
     // they may have been cached at different times), so choose the one with the
     // most timestamps available.
-    const assetWithLongestPrices = assets.reduce((acc, asset) =>
+    const assetWithMostPrices = assets.reduce((acc, asset) =>
       asset.prices.length > acc.prices.length ? acc : asset
     )
+    // Chop off the first two timestamps. Even though we fetch the same range
+    // for each asset, they tend to start/end at slightly different times,
+    // meaning we can't guarantee that we know the price of every asset at any
+    // of their first timestamps. Since they all use the same range, the
+    // interval should remain constant. Thus each asset's second timestamp
+    // should be after all of the first timestamps for each asset and be safe to
+    // use. To be extra safe, chop off the first two timestamps. Also the price
+    // history queries add some buffer at the beginning to account for this.
     const timestamps =
-      assetWithLongestPrices?.prices.map(({ timestamp }) => timestamp) || []
+      assetWithMostPrices?.prices.map(({ timestamp }) => timestamp).slice(2) ||
+      []
 
     const snapshots = timestamps.flatMap((timestamp) => {
       // Order of values in each snapshot matches order of assets.
