@@ -37,7 +37,8 @@ export const coingeckoPriceHistoryQuery: Query<
   parameters: ['id', 'range'],
   optionalParameters: ['end'],
   validate: ({ range, end }) =>
-    isValidTimeRange(range) && !isNaN(Number(end)) && Number(end) > 0,
+    isValidTimeRange(range) &&
+    (!end || (!isNaN(Number(end)) && Number(end) > 0)),
   url: ({ id, range, end: endTime }) => {
     const { start, end } = getRangeBounds(
       range,

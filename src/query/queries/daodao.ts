@@ -7,6 +7,7 @@ import {
   findValueAtTimestamp,
   getRangeBounds,
   isValidTimeRange,
+  serializeSkipAssetOrigin,
 } from '@/utils'
 
 import { coingeckoPriceHistoryQuery } from './coingecko'
@@ -33,7 +34,8 @@ export const daodaoBankBalancesHistoryQuery: Query<
   parameters: ['chainId', 'address', 'range'],
   optionalParameters: ['end'],
   validate: ({ range, end }) =>
-    isValidTimeRange(range) && !isNaN(Number(end)) && Number(end) > 0,
+    isValidTimeRange(range) &&
+    (!end || (!isNaN(Number(end)) && Number(end) > 0)),
   url: ({ chainId, address, range, end: endTime }) => {
     const { start, end } = getRangeBounds(
       range,
@@ -75,7 +77,8 @@ export const daodaoCw20BalancesHistoryQuery: Query<
   parameters: ['chainId', 'address', 'range'],
   optionalParameters: ['end'],
   validate: ({ range, end }) =>
-    isValidTimeRange(range) && !isNaN(Number(end)) && Number(end) > 0,
+    isValidTimeRange(range) &&
+    (!end || (!isNaN(Number(end)) && Number(end) > 0)),
   url: ({ chainId, address, range, end: endTime }) => {
     const { start, end } = getRangeBounds(
       range,
@@ -116,7 +119,8 @@ export const daodaoCommunityPoolHistoryQuery: Query<
   parameters: ['chainId', 'range'],
   optionalParameters: ['end'],
   validate: ({ range, end }) =>
-    isValidTimeRange(range) && !isNaN(Number(end)) && Number(end) > 0,
+    isValidTimeRange(range) &&
+    (!end || (!isNaN(Number(end)) && Number(end) > 0)),
   url: ({ chainId, range, end: endTime }) => {
     const { start, end } = getRangeBounds(
       range,
@@ -160,13 +164,19 @@ export const daodaoValueHistoryQuery: Query<
     chainId: string
     address: string
     range: TimeRange
+    // Optionally filter by token denom/address. Comma separated.
+    tokenFilter?: string
   }
 > = {
   type: QueryType.Custom,
   name: 'daodao-value-history',
   parameters: ['chainId', 'address', 'range'],
   validate: ({ range }) => isValidTimeRange(range),
-  execute: async ({ chainId, address, range }, query) => {
+  execute: async (
+    { chainId, address, range, tokenFilter: _tokenFilter },
+    query
+  ) => {
+    const tokenFilter = _tokenFilter?.split(',')
     const end = Date.now().toString()
     const isCommunityPool = address === COMMUNITY_POOL_ADDRESS_PLACEHOLDER
 
@@ -195,10 +205,18 @@ export const daodaoValueHistoryQuery: Query<
     const cw20Snapshots = cw20Body || []
 
     const uniqueAssets = uniq([
-      ...nativeSnapshots.flatMap(({ value }) => Object.keys(value)),
-      ...cw20Snapshots.flatMap(({ value }) =>
-        value.map(({ contractAddress }) => `cw20:${contractAddress}`)
-      ),
+      ...nativeSnapshots
+        .flatMap(({ value }) => Object.keys(value))
+        .filter((denom) => !tokenFilter || tokenFilter.includes(denom)),
+      ...cw20Snapshots
+        .flatMap(({ value }) =>
+          value.map(({ contractAddress }) => contractAddress)
+        )
+        .filter(
+          (contractAddress) =>
+            !tokenFilter || tokenFilter.includes(contractAddress)
+        )
+        .map((contractAddress) => `cw20:${contractAddress}`),
     ])
 
     const assets = (
@@ -264,7 +282,7 @@ export const daodaoValueHistoryQuery: Query<
     // they may have been cached at different times), so choose the one with the
     // most timestamps available.
     const assetWithMostPrices = assets.reduce((acc, asset) =>
-      asset.prices.length > acc.prices.length ? acc : asset
+      asset.prices.length > acc.prices.length ? asset : acc
     )
     // Chop off the first two timestamps. Even though we fetch the same range
     // for each asset, they tend to start/end at slightly different times,
@@ -311,6 +329,169 @@ export const daodaoValueHistoryQuery: Query<
     return {
       assets: assets.map(({ asset }) => asset),
       snapshots,
+    }
+  },
+  // Cache for:
+  // - 5 minutes when querying the past hour
+  // - 1 hour when querying the past day
+  // - 1 day when querying the rest
+  ttl: ({ range }) =>
+    range === TimeRange.Hour
+      ? 60
+      : range === TimeRange.Day
+        ? 60 * 60
+        : 24 * 60 * 60,
+}
+
+export const daodaoManyValueHistoryQuery: Query<
+  {
+    timestamps: number[]
+    assets: {
+      origin: {
+        chainId: string
+        denom: string
+      }
+      // Value at each timestamp.
+      values: (number | null)[]
+    }[]
+    // Total value at each timestamp.
+    totals: (number | null)[]
+  },
+  {
+    // Comma-separated list of <chainId>:<address>
+    accounts: string
+    range: TimeRange
+    // Optionally filter by tokens. Comma-separated list of
+    // <chainId>:<denomOrAddress>.
+    tokenFilter?: string
+  }
+> = {
+  type: QueryType.Custom,
+  name: 'daodao-many-value-history',
+  parameters: ['accounts', 'range'],
+  validate: ({ accounts, range }) =>
+    accounts.split(',').every((account) => account.includes(':')) &&
+    isValidTimeRange(range),
+  execute: async ({ accounts, range, tokenFilter: _tokenFilter }, query) => {
+    // Group by chain ID.
+    const tokenFilter = _tokenFilter?.split(',').reduce(
+      (acc, filter) => {
+        const [chainId, denomOrAddress] = filter.split(':')
+        return {
+          ...acc,
+          [chainId]: [...(acc[chainId] || []), denomOrAddress],
+        }
+      },
+      {} as Record<string, string[]>
+    )
+
+    const accountHistories = await Promise.all(
+      accounts.split(',').map(async (account) => {
+        const [chainId, address] = account.split(':')
+        return (
+          await query(daodaoValueHistoryQuery, {
+            chainId,
+            address,
+            range,
+            tokenFilter: tokenFilter?.[chainId].join(','),
+          })
+        ).body
+      })
+    )
+
+    // All queries have similar timestamps since they use the same range
+    // (though they may have been cached at different times), so choose the
+    // one with the most timestamps available.
+    const oldestAccount = accountHistories.reduce((acc, account) =>
+      account.snapshots.length > acc.snapshots.length ? account : acc
+    )
+    let timestamps =
+      oldestAccount?.snapshots.map(({ timestamp }) => timestamp) || []
+
+    // Get unique tokens across all accounts.
+    const uniqueAssetOrigins = uniq(
+      accountHistories.flatMap(({ assets }) =>
+        assets.map(serializeSkipAssetOrigin)
+      )
+    )
+
+    const assets = uniqueAssetOrigins.map((assetOrigin) => {
+      // Get the snapshots of this token at each timestamp for each account.
+      const accountTokenSnapshots = accountHistories.map(
+        ({ assets, snapshots }) => {
+          // Get the index of this asset in the snapshots for this account's
+          // historical balances.
+          const snapshotAssetIndex = assets.findIndex(
+            (asset) => serializeSkipAssetOrigin(asset) === assetOrigin
+          )
+
+          if (snapshotAssetIndex === -1) {
+            return []
+          }
+
+          // Extract this token's value at each timestamp.
+          return snapshots.map(({ timestamp, values }) => ({
+            timestamp,
+            value: values[snapshotAssetIndex].value,
+          }))
+        }
+      )
+
+      const values = timestamps.map((timestamp) => {
+        // Get the account values at this timestamp for each account.
+        const accountValues = accountTokenSnapshots.map(
+          (snapshots) => findValueAtTimestamp(snapshots, timestamp)?.value
+        )
+
+        // Sum the values at this timestamp. If all are undefined, return null
+        // to indicate there's no data for this timestamp.
+        return accountValues.reduce(
+          (acc, value) =>
+            acc === null && value === undefined
+              ? null
+              : (acc || 0) + (value || 0),
+          null as number | null
+        )
+      })
+
+      return {
+        origin: {
+          chainId: assetOrigin.split(':')[0],
+          denom: assetOrigin.split(':')[1],
+        },
+        values,
+      }
+    })
+
+    // Sum up the values at each timestamp, ignoring null values.
+    let totals = timestamps.map((_, index) =>
+      assets.reduce((acc, { values }) => acc + (values[index] || 0), 0)
+    )
+
+    // Remove timestamps at the front that have no data for all tokens.
+
+    // Get first timestamp with a value.
+    let firstNonNullTimestamp = timestamps.findIndex((_, index) =>
+      assets.some(({ values }) => values[index] !== null)
+    )
+
+    // If no non-null timestamps, remove all.
+    if (firstNonNullTimestamp === -1) {
+      firstNonNullTimestamp = totals.length
+    }
+
+    if (firstNonNullTimestamp > 0) {
+      timestamps = timestamps.slice(firstNonNullTimestamp)
+      assets.forEach(
+        (data) => (data.values = data.values.slice(firstNonNullTimestamp))
+      )
+      totals = totals.slice(firstNonNullTimestamp)
+    }
+
+    return {
+      timestamps,
+      assets,
+      totals,
     }
   },
   // Cache for:
