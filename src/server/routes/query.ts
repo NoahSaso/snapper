@@ -63,5 +63,10 @@ export const query: MiddlewareHandler = async (request, response) => {
     response.set('cache-control', `max-age=${ttl}, public, must-revalidate`)
   }
 
-  response.status(200).json(queryState.body)
+  const { body } = queryState
+  if (body === undefined) {
+    response.status(204).send()
+  } else {
+    response.status(200).json(body)
+  }
 }
