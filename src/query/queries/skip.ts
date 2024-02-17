@@ -17,7 +17,12 @@ export type SkipAsset = {
   recommended_symbol: string
 }
 
-export const skipAssetsQuery: Query<SkipAsset[]> = {
+export const skipAssetsQuery: Query<
+  SkipAsset[],
+  {
+    chainId: string
+  }
+> = {
   type: QueryType.Url,
   name: 'skip-assets',
   parameters: ['chainId'],
@@ -31,7 +36,14 @@ export const skipAssetsQuery: Query<SkipAsset[]> = {
   revalidate: false,
 }
 
-export const skipAssetQuery: Query<SkipAsset | undefined> = {
+export const skipAssetQuery: Query<
+  SkipAsset | undefined,
+  {
+    chainId: string
+    denom: string
+    cw20?: string
+  }
+> = {
   type: QueryType.Custom,
   name: 'skip-asset',
   parameters: ['chainId', 'denom'],

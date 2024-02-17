@@ -9,7 +9,7 @@ import {
 } from '@/utils'
 
 import { coingeckoPriceHistoryQuery } from './coingecko'
-import { skipAssetQuery } from './skip'
+import { SkipAsset, skipAssetQuery } from './skip'
 
 export const daodaoBankBalancesHistoryQuery: Query<
   | {
@@ -18,14 +18,19 @@ export const daodaoBankBalancesHistoryQuery: Query<
       blockHeight: number
       blockTimeUnixMs: number
     }[]
-  | undefined
+  | undefined,
+  {
+    chainId: string
+    address: string
+    range: TimeRange
+  }
 > = {
   type: QueryType.Url,
   name: 'daodao-bank-balances-history',
   parameters: ['chainId', 'address', 'range'],
   validate: ({ range }) => isValidTimeRange(range),
   url: ({ chainId, address, range }) => {
-    const { start, end } = getRangeBounds(range as TimeRange)
+    const { start, end } = getRangeBounds(range)
 
     return `https://indexer.daodao.zone/${chainId}/wallet/${address}/bank/balances?times=${BigInt(start * 1000).toString()}..${BigInt(end * 1000).toString()}`
   },
@@ -48,14 +53,19 @@ export const daodaoCw20BalancesHistoryQuery: Query<
       blockHeight: number
       blockTimeUnixMs: number
     }[]
-  | undefined
+  | undefined,
+  {
+    chainId: string
+    address: string
+    range: TimeRange
+  }
 > = {
   type: QueryType.Url,
   name: 'daodao-cw20-balances-history',
   parameters: ['chainId', 'address', 'range'],
   validate: ({ range }) => isValidTimeRange(range),
   url: ({ chainId, address, range }) => {
-    const { start, end } = getRangeBounds(range as TimeRange)
+    const { start, end } = getRangeBounds(range)
 
     return `https://indexer.daodao.zone/${chainId}/wallet/${address}/tokens/list?times=${BigInt(start * 1000).toString()}..${BigInt(end * 1000).toString()}`
   },
@@ -71,13 +81,25 @@ export const daodaoCw20BalancesHistoryQuery: Query<
         : 24 * 60 * 60,
 }
 
-export const daodaoCommunityPoolHistoryQuery: Query = {
+export const daodaoCommunityPoolHistoryQuery: Query<
+  | {
+      // Map of denom to balance.
+      value: Record<string, string | undefined>
+      blockHeight: number
+      blockTimeUnixMs: number
+    }[]
+  | undefined,
+  {
+    chainId: string
+    range: TimeRange
+  }
+> = {
   type: QueryType.Url,
   name: 'daodao-community-pool-history',
   parameters: ['chainId', 'range'],
   validate: ({ range }) => isValidTimeRange(range),
   url: ({ chainId, range }) => {
-    const { start, end } = getRangeBounds(range as TimeRange)
+    const { start, end } = getRangeBounds(range)
 
     return `https://indexer.daodao.zone/${chainId}/generic/_/communityPool/balances?times=${BigInt(start * 1000).toString()}..${BigInt(end * 1000).toString()}`
   },
@@ -93,18 +115,49 @@ export const daodaoCommunityPoolHistoryQuery: Query = {
         : 24 * 60 * 60,
 }
 
-export const daodaoValueHistoryQuery: Query = {
+/**
+ * The address passed to the query to indicate that it should load tokens from
+ * the community pool instead.
+ */
+const COMMUNITY_POOL_ADDRESS_PLACEHOLDER = 'COMMUNITY_POOL'
+
+export const daodaoValueHistoryQuery: Query<
+  {
+    assets: SkipAsset[]
+    snapshots: {
+      timestamp: number
+      values: {
+        price?: number
+        balance?: string
+        value?: number
+      }[]
+      totalValue: number
+    }[]
+  },
+  {
+    chainId: string
+    address: string
+    range: TimeRange
+  }
+> = {
   type: QueryType.Custom,
   name: 'daodao-value-history',
   parameters: ['chainId', 'address', 'range'],
   validate: ({ range }) => isValidTimeRange(range),
   execute: async ({ chainId, address, range }, query) => {
+    const isCommunityPool = address === COMMUNITY_POOL_ADDRESS_PLACEHOLDER
+
     const [{ body: nativeBody }, { body: cw20Body }] = await Promise.all([
-      query(daodaoBankBalancesHistoryQuery, {
-        chainId,
-        address,
-        range,
-      }),
+      isCommunityPool
+        ? query(daodaoCommunityPoolHistoryQuery, {
+            chainId,
+            range,
+          })
+        : query(daodaoBankBalancesHistoryQuery, {
+            chainId,
+            address,
+            range,
+          }),
       query(daodaoCw20BalancesHistoryQuery, {
         chainId,
         address,

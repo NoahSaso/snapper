@@ -12,7 +12,10 @@ export enum QueryType {
   Custom = 'custom',
 }
 
-export type QueryTypeUrlOptions<Body = unknown> = {
+export type QueryTypeUrlOptions<
+  Body = unknown,
+  Parameters extends Record<string, string> = Record<string, string>,
+> = {
   /**
    * The URL method for the query. Defaults to GET.
    */
@@ -20,38 +23,44 @@ export type QueryTypeUrlOptions<Body = unknown> = {
   /**
    * The URL, or a function to get the URL for the query using the parameters.
    */
-  url: string | ((params: Record<string, string>) => string)
+  url: string | ((params: Parameters) => string)
   /**
    * The HTTP headers, or a function to get the HTTP headers for the query using
    * the parameters.
    */
   headers?:
     | Record<string, string>
-    | ((params: Record<string, string>) => Record<string, string>)
+    | ((params: Parameters) => Record<string, string>)
   /**
    * Transform the response body.
    */
-  transform?: (
-    body: Record<string, unknown>,
-    params: Record<string, string>
-  ) => Body
+  transform?: (body: Record<string, unknown>, params: Parameters) => Body
 }
 
-export type QueryTypeCustomOptions<Body = unknown> = {
+export type QueryTypeCustomOptions<
+  Body = unknown,
+  Parameters extends Record<string, string> = Record<string, string>,
+> = {
   /**
    * The function to call for the query. It will be called with the parameters
    * and a function to fetch other queries.
    */
   execute: (
-    params: Record<string, string>,
-    fetchQuery: <InnerBody = unknown>(
-      query: Query<InnerBody>,
-      params: Record<string, string>
+    params: Parameters,
+    fetchQuery: <
+      InnerBody = unknown,
+      InnerParameters extends Record<string, string> = Record<string, string>,
+    >(
+      query: Query<InnerBody, InnerParameters>,
+      params: InnerParameters
     ) => Promise<QueryState<InnerBody>>
   ) => Body | Promise<Body>
 }
 
-export type Query<Body = unknown> = {
+export type Query<
+  Body = unknown,
+  Parameters extends Record<string, string> = Record<string, string>,
+> = {
   /**
    * Unique query name. Must be URL-safe since it will be used in URLs.
    */
@@ -68,24 +77,24 @@ export type Query<Body = unknown> = {
    * Parameter validation function. Errors thrown or returned will be sent in
    * the response. If it returns `false`, a generic error will be sent.
    */
-  validate?: (params: Record<string, string>) => boolean | Error
+  validate?: (params: Parameters) => boolean | Error
   /**
    * How long the query is valid for, in seconds, or a function to get it.
    * Defaults to 60. Set to 0 to disable.
    */
-  ttl: number | ((params: Record<string, string>) => number)
+  ttl: number | ((params: Parameters) => number)
   /**
    * Whether or not to automatically revalidate the query when it expires, or a
    * function to get it. Defaults to true.
    */
-  revalidate?: boolean | ((params: Record<string, string>) => boolean)
+  revalidate?: boolean | ((params: Parameters) => boolean)
 } & (
   | ({
       type: QueryType.Url
-    } & QueryTypeUrlOptions<Body>)
+    } & QueryTypeUrlOptions<Body, Parameters>)
   | ({
       type: QueryType.Custom
-    } & QueryTypeCustomOptions<Body>)
+    } & QueryTypeCustomOptions<Body, Parameters>)
 )
 
 export type QueryState<Body = unknown> = {

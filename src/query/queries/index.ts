@@ -9,7 +9,7 @@ import {
 } from './daodao'
 import { skipAssetQuery, skipAssetsQuery } from './skip'
 
-export const queries: Query[] = [
+export const queries: Query<any, any>[] = [
   coingeckoPriceQuery,
   coingeckoPriceHistoryQuery,
   daodaoBankBalancesHistoryQuery,

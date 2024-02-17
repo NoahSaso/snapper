@@ -16,9 +16,12 @@ export const getQuery = (name: string) => queries.find((q) => q.name === name)
 /**
  * Find and parse the query state from the cache.
  */
-export const getQueryState = async <Body = unknown>(
+export const getQueryState = async <
+  Body = unknown,
+  Parameters extends Record<string, string> = Record<string, string>,
+>(
   query: Query<Body>,
-  params: Record<string, string>
+  params: Parameters
 ): Promise<QueryState<Body> | undefined> => {
   const data = await redis.get(getQueryKey(query, params))
   if (data) {
@@ -29,9 +32,12 @@ export const getQueryState = async <Body = unknown>(
 /**
  * Fetch the query, store it in the cache, and return the state.
  */
-export const fetchQuery = async <Body = unknown>(
-  query: Query<Body>,
-  params: Record<string, string>
+export const fetchQuery = async <
+  Body = unknown,
+  Parameters extends Record<string, string> = Record<string, string>,
+>(
+  query: Query<Body, Parameters>,
+  params: Parameters
 ): Promise<QueryState<Body>> => {
   const ttl = typeof query.ttl === 'function' ? query.ttl(params) : query.ttl
 
@@ -96,7 +102,7 @@ export const fetchQuery = async <Body = unknown>(
  * Get query storage key given the query and its parameters.
  */
 export const getQueryKey = (
-  query: Query,
+  query: Query<any, any>,
   params: Record<string, string>
 ): string =>
   QUERY_PREFIX +
