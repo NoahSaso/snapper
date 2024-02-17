@@ -4,6 +4,7 @@ import uniq from 'lodash.uniq'
 import { Query, QueryType } from '@/types'
 import {
   TimeRange,
+  deserializeSkipAssetOrigin,
   findValueAtTimestamp,
   getRangeBounds,
   isValidTimeRange,
@@ -455,10 +456,7 @@ export const daodaoManyValueHistoryQuery: Query<
       })
 
       return {
-        origin: {
-          chainId: assetOrigin.split(':')[0],
-          denom: assetOrigin.split(':')[1],
-        },
+        origin: deserializeSkipAssetOrigin(assetOrigin),
         values,
       }
     })
