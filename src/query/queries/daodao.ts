@@ -234,10 +234,12 @@ export const daodaoValueHistoryQuery: Query<
       )
     ).flatMap((data) => data || [])
 
-    // All prices have the same timestamps, so just use the first one.
-    const timestamps = assets[0]?.prices.map(({ timestamp }) => timestamp) || []
+    // Get unique timestamps across all assets.
+    const timestamps = uniq(
+      assets.flatMap(({ prices }) => prices.map(({ timestamp }) => timestamp))
+    ).sort((a, b) => a - b)
 
-    const snapshots = timestamps.map((timestamp) => {
+    const snapshots = timestamps.flatMap((timestamp) => {
       // Order of values in each snapshot matches order of assets.
       const values = assets.map(({ asset, balances, prices }) => {
         const balance = findValueAtTimestamp(balances, timestamp)?.balance
@@ -249,6 +251,15 @@ export const daodaoValueHistoryQuery: Query<
 
         return { price, balance, value }
       })
+
+      // Only keep snapshots where all assets have a price and value.
+      if (
+        values.some(
+          ({ price, value }) => price === undefined || value === undefined
+        )
+      ) {
+        return []
+      }
 
       const totalValue = values.reduce(
         (acc, { value }) => acc + (value || 0),
