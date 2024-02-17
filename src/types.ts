@@ -54,10 +54,13 @@ export type Query = {
    */
   name: string
   /**
-   * Parameters for the query. These should be used in at least the `url` or
-   * `headers` function.
+   * Required parameters for the query.
    */
   parameters?: string[]
+  /**
+   * Optional parameters for the query.
+   */
+  optionalParameters?: string[]
   /**
    * Parameter validation function. Errors thrown or returned will be sent in
    * the response. If it returns `false`, a generic error will be sent.

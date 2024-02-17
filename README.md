@@ -61,6 +61,10 @@ also in the cache key.
 query takes parameters, a separate response will be cached for each unique set
 of parameters. You likely want to use these parameters in the URL function.
 
+**`optionalParameters`** are optional query parameters used by the query. If a
+query takes parameters, a separate response will be cached for each unique set
+of parameters. You likely want to use these parameters in the URL function.
+
 **`validate`** is an optional function that validates the parameters. If it
 throws or returns an error, the query will not be fetched and the error will be
 returned in the response. If it returns `false`, a generic error will be

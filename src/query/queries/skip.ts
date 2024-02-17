@@ -17,7 +17,8 @@ export const skipAssetsQuery: Query = {
 export const skipAssetQuery: Query = {
   type: QueryType.Custom,
   name: 'skip-asset',
-  parameters: ['chainId', 'denom', 'cw20'],
+  parameters: ['chainId', 'denom'],
+  optionalParameters: ['cw20'],
   execute: async ({ chainId, denom, cw20 }, query) => {
     const { body: assets } = await query(skipAssetsQuery, { chainId })
 

@@ -96,16 +96,19 @@ export const fetchQuery: FetchQuery = async (
  * Get query storage key given the query and its parameters.
  */
 export const getQueryKey = (
-  query: Pick<Query, 'name' | 'parameters'>,
+  query: Query,
   params: Record<string, string>
 ): string =>
   QUERY_PREFIX +
   query.name +
-  (query.parameters?.length
+  (query.parameters?.length || query.optionalParameters?.length
     ? '?' +
       stringify(
         Object.fromEntries(
-          query.parameters.map((param) => [param, params[param]])
+          [
+            ...(query.parameters || []),
+            ...(query.optionalParameters || []),
+          ].map((param) => [param, params[param]])
         )
       )
     : '')
