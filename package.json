@@ -10,14 +10,15 @@
     "build": "tsc && tsc-alias",
     "serve": "node dist/server/app.js",
     "revalidate": "node dist/scripts/revalidate.js",
-    "start": "pm2 reload ecosystem.config.js --no-daemon",
-    "start:dev": "docker compose -f compose.dev.yml up --exit-code-from app",
+    "start": "pm2-runtime start ecosystem.config.js",
+    "start:dev": "docker compose -f compose.dev.yml up",
     "start:prod": "pm2 reload ecosystem.config.js"
   },
   "license": "AGPL-3.0-only",
   "devDependencies": {
     "@types/busboy": "^1.5.3",
     "@types/cors": "^2.8.17",
+    "@types/lodash.uniq": "^4.5.9",
     "@types/node": "^20.11.10",
     "@types/range-parser": "^1.2.7",
     "@typescript-eslint/eslint-plugin": "^6.19.1",
@@ -41,6 +42,7 @@
     "dotenv": "^16.4.4",
     "hyper-express": "^6.14.11",
     "ioredis": "^5.3.2",
-    "json-stringify-deterministic": "^1.0.12"
+    "json-stringify-deterministic": "^1.0.12",
+    "lodash.uniq": "^4.5.0"
   }
 }

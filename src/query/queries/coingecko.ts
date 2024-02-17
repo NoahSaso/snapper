@@ -2,7 +2,7 @@ import { COINGECKO_API_KEY } from '@/config'
 import { Query, QueryType } from '@/types'
 import { TimeRange, getRangeBounds, isValidTimeRange } from '@/utils'
 
-export const coingeckoPriceQuery: Query = {
+export const coingeckoPriceQuery: Query<number> = {
   type: QueryType.Url,
   name: 'coingecko-price',
   parameters: ['id'],
@@ -18,7 +18,7 @@ export const coingeckoPriceQuery: Query = {
   revalidate: false,
 }
 
-export const coingeckoPriceHistoryQuery: Query = {
+export const coingeckoPriceHistoryQuery: Query<[number, number][]> = {
   type: QueryType.Url,
   name: 'coingecko-price-history',
   parameters: ['id', 'range'],
@@ -31,7 +31,7 @@ export const coingeckoPriceHistoryQuery: Query = {
   headers: {
     'x-cg-pro-api-key': COINGECKO_API_KEY,
   },
-  transform: (body) => body.prices,
+  transform: (body) => body.prices as [number, number][],
   // Cache for:
   // - 5 minutes when querying the past hour
   // - 1 hour when querying the past day

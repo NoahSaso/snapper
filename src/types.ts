@@ -12,7 +12,7 @@ export enum QueryType {
   Custom = 'custom',
 }
 
-export type QueryTypeUrlOptions = {
+export type QueryTypeUrlOptions<Body = unknown> = {
   /**
    * The URL method for the query. Defaults to GET.
    */
@@ -34,21 +34,24 @@ export type QueryTypeUrlOptions = {
   transform?: (
     body: Record<string, unknown>,
     params: Record<string, string>
-  ) => unknown
+  ) => Body
 }
 
-export type QueryTypeCustomOptions = {
+export type QueryTypeCustomOptions<Body = unknown> = {
   /**
    * The function to call for the query. It will be called with the parameters
    * and a function to fetch other queries.
    */
   execute: (
     params: Record<string, string>,
-    fetchQuery: FetchQuery
-  ) => unknown | Promise<unknown>
+    fetchQuery: <InnerBody = unknown>(
+      query: Query<InnerBody>,
+      params: Record<string, string>
+    ) => Promise<QueryState<InnerBody>>
+  ) => Body | Promise<Body>
 }
 
-export type Query = {
+export type Query<Body = unknown> = {
   /**
    * Unique query name. Must be URL-safe since it will be used in URLs.
    */
@@ -79,13 +82,13 @@ export type Query = {
 } & (
   | ({
       type: QueryType.Url
-    } & QueryTypeUrlOptions)
+    } & QueryTypeUrlOptions<Body>)
   | ({
       type: QueryType.Custom
-    } & QueryTypeCustomOptions)
+    } & QueryTypeCustomOptions<Body>)
 )
 
-export type QueryState = {
+export type QueryState<Body = unknown> = {
   /**
    * The response status code for the query. Defined if the query type is URL.
    */
@@ -97,17 +100,9 @@ export type QueryState = {
   /**
    * The response body for the query.
    */
-  body?: unknown
+  body: Body
   /**
    * The response time (in unix ms since epoch) for the query.
    */
   fetchedAt: number
 }
-
-/**
- * The function that fetches a query.
- */
-export type FetchQuery = (
-  query: Query,
-  params: Record<string, string>
-) => Promise<QueryState>

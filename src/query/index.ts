@@ -2,7 +2,7 @@ import axios, { AxiosError } from 'axios'
 import stringify from 'json-stringify-deterministic'
 
 import { redis } from '@/config'
-import { FetchQuery, Query, QueryState, QueryType } from '@/types'
+import { Query, QueryState, QueryType } from '@/types'
 
 import { queries } from './queries'
 
@@ -16,10 +16,10 @@ export const getQuery = (name: string) => queries.find((q) => q.name === name)
 /**
  * Find and parse the query state from the cache.
  */
-export const getQueryState = async (
-  query: Query,
+export const getQueryState = async <Body = unknown>(
+  query: Query<Body>,
   params: Record<string, string>
-): Promise<QueryState | undefined> => {
+): Promise<QueryState<Body> | undefined> => {
   const data = await redis.get(getQueryKey(query, params))
   if (data) {
     return JSON.parse(data)
@@ -29,13 +29,13 @@ export const getQueryState = async (
 /**
  * Fetch the query, store it in the cache, and return the state.
  */
-export const fetchQuery: FetchQuery = async (
-  query: Query,
+export const fetchQuery = async <Body = unknown>(
+  query: Query<Body>,
   params: Record<string, string>
-): Promise<QueryState> => {
+): Promise<QueryState<Body>> => {
   const ttl = typeof query.ttl === 'function' ? query.ttl(params) : query.ttl
 
-  let queryState: QueryState
+  let queryState: QueryState<Body>
   if (query.type === QueryType.Url) {
     const url = typeof query.url === 'function' ? query.url(params) : query.url
     const headers =
@@ -68,7 +68,7 @@ export const fetchQuery: FetchQuery = async (
       fetchedAt: Date.now(),
     }
   } else if (query.type === QueryType.Custom) {
-    const body = await query.execute(params, fetchQuery)
+    const body = await query.execute(params, fetchQuery as any)
     queryState = {
       body,
       fetchedAt: Date.now(),
