@@ -1,35 +1,26 @@
+import { Asset, SKIP_API_URL, SkipRouter } from '@skip-router/core'
+
 import { Query, QueryType } from '@/types'
 
-export type SkipAsset = {
-  denom: string
-  chain_id: string
-  origin_denom: string
-  origin_chain_id: string
-  trace: string
-  is_cw20: boolean
-  is_evm: boolean
-  symbol: string
-  name: string
-  logo_uri: string
-  decimals: number
-  description: string
-  coingecko_id: string
-  recommended_symbol: string
-}
+const client = new SkipRouter({
+  apiURL: SKIP_API_URL,
+})
 
 export const skipAssetsQuery: Query<
-  SkipAsset[],
+  Asset[],
   {
     chainId: string
   }
 > = {
-  type: QueryType.Url,
+  type: QueryType.Custom,
   name: 'skip-assets',
   parameters: ['chainId'],
-  url: ({ chainId }) =>
-    `https://api.skip.money/v1/fungible/assets?include_cw20_assets=true&chain_id=${chainId}`,
-  transform: (body, { chainId }) =>
-    (body as any).chain_to_assets_map?.[chainId]?.assets || [],
+  execute: async ({ chainId }) =>
+    (
+      await client.assets({
+        chainID: chainId,
+      })
+    )[chainId] || [],
   // Cache chain assets for a day.
   ttl: 24 * 60 * 60,
   // No need to auto-revalidate since this query is quick.
@@ -37,7 +28,7 @@ export const skipAssetsQuery: Query<
 }
 
 export const skipAssetQuery: Query<
-  SkipAsset | undefined,
+  Asset | undefined,
   {
     chainId: string
     denom: string
@@ -53,7 +44,7 @@ export const skipAssetQuery: Query<
 
     return assets && Array.isArray(assets)
       ? assets.find(
-          (asset) => asset.denom === denom && (cw20 !== 'true' || asset.is_cw20)
+          (asset) => asset.denom === denom && (cw20 !== 'true' || asset.isCW20)
         )
       : undefined
   },

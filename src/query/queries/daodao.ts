@@ -1,3 +1,4 @@
+import { Asset } from '@skip-router/core'
 import uniq from 'lodash.uniq'
 
 import { Query, QueryType } from '@/types'
@@ -9,7 +10,7 @@ import {
 } from '@/utils'
 
 import { coingeckoPriceHistoryQuery } from './coingecko'
-import { SkipAsset, skipAssetQuery } from './skip'
+import { skipAssetQuery } from './skip'
 
 export const daodaoBankBalancesHistoryQuery: Query<
   | {
@@ -123,7 +124,7 @@ const COMMUNITY_POOL_ADDRESS_PLACEHOLDER = 'COMMUNITY_POOL'
 
 export const daodaoValueHistoryQuery: Query<
   {
-    assets: SkipAsset[]
+    assets: Asset[]
     snapshots: {
       timestamp: number
       values: {
@@ -186,12 +187,12 @@ export const daodaoValueHistoryQuery: Query<
             denom,
             cw20: cw20.toString(),
           })
-          if (!asset?.coingecko_id || !asset.decimals) {
+          if (!asset?.coingeckoID || !asset.decimals) {
             return
           }
 
           const { body: prices } = await query(coingeckoPriceHistoryQuery, {
-            id: asset.coingecko_id,
+            id: asset.coingeckoID,
             range,
           })
 
@@ -242,7 +243,7 @@ export const daodaoValueHistoryQuery: Query<
         const balance = findValueAtTimestamp(balances, timestamp)?.balance
         const price = findValueAtTimestamp(prices, timestamp)?.price
         const value =
-          balance && price !== undefined
+          balance && price !== undefined && asset.decimals
             ? price * (Number(balance) / Math.pow(10, asset.decimals))
             : undefined
 
