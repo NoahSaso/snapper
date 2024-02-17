@@ -54,14 +54,16 @@ export const getRangeBounds = (range: TimeRange, endDate = new Date()) => {
 
   // Floor is redundant since snapping above should clear milliseconds.
   const end = Math.floor(endDate.getTime() / 1000)
+  const interval = rangeInterval[range]
   // Add additional buffer (three extra intervals) to the start time to account
   // for mismatching timestamps returned from CoinGecko for the same range with
   // different tokens.
-  const start = end - rangeDuration[range] - rangeInterval[range] * 3
+  const start = end - rangeDuration[range] - interval * 3
 
   return {
     start,
     end,
+    interval: rangeInterval[range],
   }
 }
 

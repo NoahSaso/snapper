@@ -37,12 +37,12 @@ export const daodaoBankBalancesHistoryQuery: Query<
     isValidTimeRange(range) &&
     (!end || (!isNaN(Number(end)) && Number(end) > 0)),
   url: ({ chainId, address, range, end: endTime }) => {
-    const { start, end } = getRangeBounds(
+    const { start, end, interval } = getRangeBounds(
       range,
       endTime ? new Date(Number(endTime)) : undefined
     )
 
-    return `https://indexer.daodao.zone/${chainId}/wallet/${address}/bank/balances?times=${BigInt(start * 1000).toString()}..${BigInt(end * 1000).toString()}`
+    return `https://indexer.daodao.zone/${chainId}/wallet/${address}/bank/balances?times=${BigInt(start * 1000).toString()}..${BigInt(end * 1000).toString()}&timeStep=${BigInt(interval * 1000).toString()}`
   },
   // Cache for:
   // - 5 minutes when querying the past hour
@@ -80,12 +80,12 @@ export const daodaoCw20BalancesHistoryQuery: Query<
     isValidTimeRange(range) &&
     (!end || (!isNaN(Number(end)) && Number(end) > 0)),
   url: ({ chainId, address, range, end: endTime }) => {
-    const { start, end } = getRangeBounds(
+    const { start, end, interval } = getRangeBounds(
       range,
       endTime ? new Date(Number(endTime)) : undefined
     )
 
-    return `https://indexer.daodao.zone/${chainId}/wallet/${address}/tokens/list?times=${BigInt(start * 1000).toString()}..${BigInt(end * 1000).toString()}`
+    return `https://indexer.daodao.zone/${chainId}/wallet/${address}/tokens/list?times=${BigInt(start * 1000).toString()}..${BigInt(end * 1000).toString()}&timeStep=${BigInt(interval * 1000).toString()}`
   },
   // Cache for:
   // - 5 minutes when querying the past hour
@@ -122,12 +122,12 @@ export const daodaoCommunityPoolHistoryQuery: Query<
     isValidTimeRange(range) &&
     (!end || (!isNaN(Number(end)) && Number(end) > 0)),
   url: ({ chainId, range, end: endTime }) => {
-    const { start, end } = getRangeBounds(
+    const { start, end, interval } = getRangeBounds(
       range,
       endTime ? new Date(Number(endTime)) : undefined
     )
 
-    return `https://indexer.daodao.zone/${chainId}/generic/_/communityPool/balances?times=${BigInt(start * 1000).toString()}..${BigInt(end * 1000).toString()}`
+    return `https://indexer.daodao.zone/${chainId}/generic/_/communityPool/balances?times=${BigInt(start * 1000).toString()}..${BigInt(end * 1000).toString()}&timeStep=${BigInt(interval * 1000).toString()}`
   },
   // Cache for:
   // - 5 minutes when querying the past hour
