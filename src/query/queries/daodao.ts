@@ -352,8 +352,7 @@ export const daodaoValueHistoryQuery: Query<
         ? 60 * 60
         : 24 * 60 * 60,
   // No need to auto-revalidate for short ranges.
-  revalidate: ({ range }) =>
-    range !== TimeRange.Hour && range !== TimeRange.Day,
+  revalidate: ({ range }) => range !== TimeRange.Hour,
 }
 
 export const daodaoManyValueHistoryQuery: Query<
@@ -515,6 +514,5 @@ export const daodaoManyValueHistoryQuery: Query<
         ? 60 * 60
         : 24 * 60 * 60,
   // No need to auto-revalidate for short ranges.
-  revalidate: ({ range }) =>
-    range !== TimeRange.Hour && range !== TimeRange.Day,
+  revalidate: ({ range }) => range !== TimeRange.Hour,
 }
