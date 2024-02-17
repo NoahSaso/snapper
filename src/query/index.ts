@@ -20,7 +20,7 @@ export const getQueryState = async <
   Body = unknown,
   Parameters extends Record<string, string> = Record<string, string>,
 >(
-  query: Query<Body>,
+  query: Query<Body, Parameters>,
   params: Parameters
 ): Promise<QueryState<Body> | undefined> => {
   const data = await redis.get(getQueryKey(query, params))
@@ -30,7 +30,8 @@ export const getQueryState = async <
 }
 
 /**
- * Fetch the query, store it in the cache, and return the state.
+ * Fetch the query (from cache if available, or executing it otherwise), store
+ * it in the cache, and return the state.
  */
 export const fetchQuery = async <
   Body = unknown,
@@ -39,6 +40,11 @@ export const fetchQuery = async <
   query: Query<Body, Parameters>,
   params: Parameters
 ): Promise<QueryState<Body>> => {
+  const currentQueryState = await getQueryState(query, params)
+  if (currentQueryState) {
+    return currentQueryState
+  }
+
   const ttl = typeof query.ttl === 'function' ? query.ttl(params) : query.ttl
 
   let queryState: QueryState<Body>

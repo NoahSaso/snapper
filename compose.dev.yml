@@ -4,7 +4,7 @@ services:
     command: sh -c "npm run build && npm run start"
     working_dir: /usr/src/app
     ports:
-      - 3000:3000
+      - 3030:3000
       - 9227:9227 # debug
     volumes:
       # use local files as source

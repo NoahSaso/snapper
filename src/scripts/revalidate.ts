@@ -63,6 +63,8 @@ const revalidate = async () => {
             )
         )
       }
+
+      console.log(`[${new Date().toISOString()}] Revalidation complete.`)
     }
   } catch (err) {
     console.error(`error revalidating queries`, err)

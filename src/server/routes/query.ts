@@ -1,6 +1,7 @@
 import { MiddlewareHandler } from 'hyper-express'
 
-import { fetchQuery, getQuery, getQueryState } from '@/query'
+import { redis } from '@/config'
+import { fetchQuery, getQuery, getQueryKey } from '@/query'
 
 export const query: MiddlewareHandler = async (request, response) => {
   const queryName = request.path_parameters.query
@@ -39,27 +40,19 @@ export const query: MiddlewareHandler = async (request, response) => {
     }
   }
 
-  let queryState = await getQueryState(query, request.query_parameters)
-  // If no query state, fetch it.
-  if (!queryState) {
-    try {
-      queryState = await fetchQuery(query, request.query_parameters)
-    } catch (error) {
-      response
-        .status(500)
-        .send(
-          error instanceof Error ? error.message : `unknown error: ${error}`
-        )
-      return
-    }
+  let queryState
+  try {
+    queryState = await fetchQuery(query, request.query_parameters)
+  } catch (error) {
+    response
+      .status(500)
+      .send(error instanceof Error ? error.message : `unknown error: ${error}`)
+    return
   }
 
   // Set cache headers.
-  const ttl =
-    typeof query.ttl === 'function'
-      ? query.ttl(request.query_parameters)
-      : query.ttl
-  if (ttl) {
+  const ttl = await redis.ttl(getQueryKey(query, request.query_parameters))
+  if (ttl > 0) {
     response.set('cache-control', `max-age=${ttl}, public, must-revalidate`)
   }
 
