@@ -282,6 +282,11 @@ export const daodaoValueHistoryQuery: Query<
         return { price, balance, value }
       })
 
+      // Ignore snapshots with no values.
+      if (!values.some(({ value }) => value !== undefined)) {
+        return []
+      }
+
       const totalValue = values.reduce(
         (acc, { value }) => acc + (value || 0),
         0
