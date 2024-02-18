@@ -415,6 +415,14 @@ export const daodaoManyValueHistoryQuery: Query<
       // Ignore failed queries.
       .flatMap((result) => (result.status === 'fulfilled' ? result.value : []))
 
+    if (accountHistories.length === 0) {
+      return {
+        timestamps: [],
+        assets: [],
+        totals: [],
+      }
+    }
+
     // All queries have similar timestamps since they use the same range
     // (though they may have been cached at different times), so choose the
     // one with the most timestamps available.
