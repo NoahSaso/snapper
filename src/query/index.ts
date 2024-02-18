@@ -39,10 +39,19 @@ export const fetchQuery = async <
 >(
   query: Query<Body, Parameters>,
   params: Parameters
-): Promise<QueryState<Body>> => {
+): Promise<{
+  data: QueryState<Body>
+  /**
+   * Whether or not the query was fetched from the cache.
+   */
+  cached: boolean
+}> => {
   const currentQueryState = await getQueryState(query, params)
   if (currentQueryState) {
-    return currentQueryState
+    return {
+      data: currentQueryState,
+      cached: true,
+    }
   }
 
   const ttl = typeof query.ttl === 'function' ? query.ttl(params) : query.ttl
@@ -80,7 +89,10 @@ export const fetchQuery = async <
       fetchedAt: Date.now(),
     }
   } else if (query.type === QueryType.Custom) {
-    const body = await query.execute(params, fetchQuery as any)
+    const body = await query.execute(
+      params,
+      async (...p) => (await fetchQuery(...p)).data
+    )
     queryState = {
       body,
       fetchedAt: Date.now(),
@@ -101,7 +113,10 @@ export const fetchQuery = async <
     await redis.set(getQueryKey(query, params), JSON.stringify(queryState))
   }
 
-  return queryState
+  return {
+    data: queryState,
+    cached: false,
+  }
 }
 
 /**

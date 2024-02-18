@@ -15,6 +15,12 @@ server.use(
   })
 )
 
+// Logger.
+server.use((req, _, next) => {
+  req.locals.startTime = Date.now()
+  next()
+})
+
 server.get('/q/:query', query)
 
 const serve = async () => {
