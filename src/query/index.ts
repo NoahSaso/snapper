@@ -38,7 +38,10 @@ export const fetchQuery = async <
   Parameters extends Record<string, string> = Record<string, string>,
 >(
   query: Query<Body, Parameters>,
-  params: Parameters
+  params: Parameters,
+  // Whether or not to force fetch the query even if it's already in the cache.
+  // This may be used to revalidate the cache before it expires.
+  forceFetch = false
 ): Promise<{
   data: QueryState<Body>
   /**
@@ -46,11 +49,13 @@ export const fetchQuery = async <
    */
   cached: boolean
 }> => {
-  const currentQueryState = await getQueryState(query, params)
-  if (currentQueryState) {
-    return {
-      data: currentQueryState,
-      cached: true,
+  if (!forceFetch) {
+    const currentQueryState = await getQueryState(query, params)
+    if (currentQueryState) {
+      return {
+        data: currentQueryState,
+        cached: true,
+      }
     }
   }
 

@@ -52,7 +52,7 @@ const revalidate = async () => {
             .slice(i, i + batch)
             .map(({ query, parameters }) =>
               // Ignore errors. Will retry on next revalidation.
-              fetchQuery(query, parameters).catch((error) =>
+              fetchQuery(query, parameters, true).catch((error) =>
                 console.error(
                   `error revalidating query "${query.name}" with parameters ${JSON.stringify(
                     parameters
