@@ -288,6 +288,13 @@ export const daodaoValueHistoryQuery: Query<
       )
     ).flatMap((data) => data || [])
 
+    if (!assets.length) {
+      return {
+        assets: [],
+        snapshots: [],
+      }
+    }
+
     // All prices have similar timestamps since they use the same range (though
     // they may have been cached at different times), so choose the one with the
     // most timestamps available.
@@ -415,7 +422,7 @@ export const daodaoManyValueHistoryQuery: Query<
       // Ignore failed queries.
       .flatMap((result) => (result.status === 'fulfilled' ? result.value : []))
 
-    if (accountHistories.length === 0) {
+    if (!accountHistories.length) {
       return {
         timestamps: [],
         assets: [],
