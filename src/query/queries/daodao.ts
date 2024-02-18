@@ -397,19 +397,23 @@ export const daodaoManyValueHistoryQuery: Query<
       {} as Record<string, string[]>
     )
 
-    const accountHistories = await Promise.all(
-      accounts.split(',').map(async (account) => {
-        const [chainId, address] = account.split(':')
-        return (
-          await query(daodaoValueHistoryQuery, {
-            chainId,
-            address,
-            range,
-            tokenFilter: tokenFilter?.[chainId].join(','),
-          })
-        ).body
-      })
+    const accountHistories = (
+      await Promise.allSettled(
+        accounts.split(',').map(async (account) => {
+          const [chainId, address] = account.split(':')
+          return (
+            await query(daodaoValueHistoryQuery, {
+              chainId,
+              address,
+              range,
+              tokenFilter: tokenFilter?.[chainId].join(','),
+            })
+          ).body
+        })
+      )
     )
+      // Ignore failed queries.
+      .flatMap((result) => (result.status === 'fulfilled' ? result.value : []))
 
     // All queries have similar timestamps since they use the same range
     // (though they may have been cached at different times), so choose the
