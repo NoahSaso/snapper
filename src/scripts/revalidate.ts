@@ -13,7 +13,7 @@ program.option(
   '-i, --interval <interval>',
   'revalidation interval in seconds',
   (value) => parseInt(value),
-  60
+  300
 )
 program.option(
   '-b, --batch <batch>',
