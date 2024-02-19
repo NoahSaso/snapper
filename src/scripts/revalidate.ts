@@ -19,7 +19,7 @@ program.option(
   '-b, --batch <batch>',
   'how many queries to revalidate at once',
   (value) => parseInt(value),
-  20
+  5
 )
 program.parse()
 const { ratio, interval: intervalSeconds, batch } = program.opts()
