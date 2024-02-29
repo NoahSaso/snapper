@@ -1,13 +1,14 @@
-import { Asset } from '@skip-router/core'
 import stringify from 'json-stringify-deterministic'
+
+import { SkipAsset } from '@/query/queries/skip'
 
 /**
  * Serialize Skip asset origin.
  */
-export const serializeSkipAssetOrigin = (asset: Asset) =>
+export const serializeSkipAssetOrigin = (asset: SkipAsset) =>
   stringify({
-    chainId: asset.originChainID,
-    denom: asset.originDenom,
+    chainId: asset.origin_chain_id,
+    denom: asset.origin_denom,
   })
 
 /**

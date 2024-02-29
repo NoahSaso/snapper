@@ -8,7 +8,13 @@ import {
   daodaoManyValueHistoryQuery,
   daodaoValueHistoryQuery,
 } from './daodao'
-import { skipAssetQuery, skipAssetsQuery } from './skip'
+import {
+  skipAssetQuery,
+  skipAssetsQuery,
+  skipChainQuery,
+  skipChainsQuery,
+  skipRecommendedAssetsQuery,
+} from './skip'
 
 export const queries: Query<any, any>[] = [
   coingeckoPriceQuery,
@@ -18,6 +24,9 @@ export const queries: Query<any, any>[] = [
   daodaoCommunityPoolHistoryQuery,
   daodaoValueHistoryQuery,
   daodaoManyValueHistoryQuery,
+  skipChainsQuery,
+  skipChainQuery,
   skipAssetsQuery,
   skipAssetQuery,
+  skipRecommendedAssetsQuery,
 ]

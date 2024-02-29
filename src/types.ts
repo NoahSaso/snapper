@@ -32,6 +32,14 @@ export type QueryTypeUrlOptions<
     | Record<string, string>
     | ((params: Parameters) => Record<string, string>)
   /**
+   * The HTTP request data, or a function to get the HTTP request data for the
+   * query using the parameters.
+   */
+  data?:
+    | string
+    | Record<string, any>
+    | ((params: Parameters) => string | Record<string, any>)
+  /**
    * Transform the response body.
    */
   transform?: (body: Record<string, unknown>, params: Parameters) => Body
