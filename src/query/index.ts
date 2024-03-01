@@ -73,13 +73,9 @@ export const fetchQuery = async <
 
     let response
     try {
-      response = await (query.method === 'POST' ? axios.post : axios.get)(
-        url,
-        data,
-        {
-          headers,
-        }
-      )
+      response = await (query.method === 'POST'
+        ? axios.post(url, data, { headers })
+        : axios.get(url, { headers }))
     } catch (error) {
       // manually capture rate limits
       if (error instanceof AxiosError) {

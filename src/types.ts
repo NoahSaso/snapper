@@ -32,8 +32,8 @@ export type QueryTypeUrlOptions<
     | Record<string, string>
     | ((params: Parameters) => Record<string, string>)
   /**
-   * The HTTP request data, or a function to get the HTTP request data for the
-   * query using the parameters.
+   * The HTTP POST request data, or a function to get the HTTP POST request data
+   * for the query using the parameters. Only used if `method` is `POST`.
    */
   data?:
     | string
