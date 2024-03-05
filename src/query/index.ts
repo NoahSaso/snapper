@@ -6,7 +6,7 @@ import { Query, QueryState, QueryType } from '@/types'
 
 import { queries } from './queries'
 
-const QUERY_PREFIX = 'Q:'
+export const QUERY_PREFIX = 'Q:'
 
 /**
  * Get query given its name.

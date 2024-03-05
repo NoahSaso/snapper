@@ -11,6 +11,7 @@
     "build:watch": "tsc && (concurrently \"tsc -w\" \"tsc-alias -w\")",
     "serve": "node dist/server/app.js",
     "revalidate": "node dist/scripts/revalidate.js",
+    "flushQuery": "node dist/scripts/flushQuery.js",
     "start": "pm2-runtime start ecosystem.config.js --watch",
     "start:dev": "docker compose -f compose.dev.yml up",
     "start:prod": "pm2 reload ecosystem.config.js"
