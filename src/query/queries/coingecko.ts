@@ -52,15 +52,10 @@ export const coingeckoPriceHistoryQuery: Query<
   },
   transform: (body) => body.prices as [number, number][],
   // Cache for:
-  // - 5 minutes when querying the past hour
-  // - 1 hour when querying the past day
+  // - 1 minute when querying the past hour or day
   // - 1 day when querying the rest
   ttl: ({ range }) =>
-    range === TimeRange.Hour
-      ? 60
-      : range === TimeRange.Day
-        ? 60 * 60
-        : 24 * 60 * 60,
+    range === TimeRange.Hour || range === TimeRange.Day ? 60 : 24 * 60 * 60,
   // No need to auto-revalidate all the time since this query is quick, and it
   // wastes our rate limit. Only revalidate the larger ranges.
   revalidate: ({ range }) =>

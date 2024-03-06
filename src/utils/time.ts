@@ -42,9 +42,9 @@ export const getRangeBounds = (range: TimeRange, endDate = new Date()) => {
   // Snap to a reasonable point in time.
   switch (range) {
     case TimeRange.Hour:
+    case TimeRange.Day:
       endDate.setSeconds(0, 0)
       break
-    case TimeRange.Day:
     case TimeRange.Week:
       endDate.setMinutes(0, 0, 0)
       break
