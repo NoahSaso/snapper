@@ -10,8 +10,32 @@ import {
   serializeSkipAssetOrigin,
 } from '@/utils'
 
-import { coingeckoPriceHistoryQuery } from './coingecko'
+import { coingeckoPriceHistoryQuery, coingeckoPriceQuery } from './coingecko'
 import { SkipAsset, skipAssetQuery } from './skip'
+
+/**
+ * The address passed to the query to indicate that it should load tokens from
+ * the community pool instead.
+ */
+const COMMUNITY_POOL_ADDRESS_PLACEHOLDER = 'COMMUNITY_POOL'
+
+export const daodaoBankBalancesQuery: Query<
+  // Map of denom to balance.
+  Record<string, string | undefined>,
+  {
+    chainId: string
+    address: string
+  }
+> = {
+  type: QueryType.Url,
+  name: 'daodao-bank-balances',
+  parameters: ['chainId', 'address'],
+  url: ({ chainId, address }) =>
+    `https://indexer.daodao.zone/${chainId}/wallet/${address}/bank/balances`,
+  ttl: 60,
+  // No need to auto-revalidate since this query is quick.
+  revalidate: false,
+}
 
 export const daodaoBankBalancesHistoryQuery: Query<
   | {
@@ -57,6 +81,24 @@ export const daodaoBankBalancesHistoryQuery: Query<
   // No need to auto-revalidate for short ranges.
   revalidate: ({ range }) =>
     range !== TimeRange.Hour && range !== TimeRange.Day,
+}
+
+export const daodaoCw20BalancesQuery: Query<
+  // List of contract addresses and balances.
+  { contractAddress: string; balance: string }[],
+  {
+    chainId: string
+    address: string
+  }
+> = {
+  type: QueryType.Url,
+  name: 'daodao-cw20-balances',
+  parameters: ['chainId', 'address'],
+  url: ({ chainId, address }) =>
+    `https://indexer.daodao.zone/${chainId}/wallet/${address}/tokens/list`,
+  ttl: 60,
+  // No need to auto-revalidate since this query is quick.
+  revalidate: false,
 }
 
 export const daodaoCw20BalancesHistoryQuery: Query<
@@ -105,6 +147,23 @@ export const daodaoCw20BalancesHistoryQuery: Query<
     range !== TimeRange.Hour && range !== TimeRange.Day,
 }
 
+export const daodaoCommunityPoolQuery: Query<
+  // Map of denom to balance.
+  Record<string, string | undefined>,
+  {
+    chainId: string
+  }
+> = {
+  type: QueryType.Url,
+  name: 'daodao-community-pool',
+  parameters: ['chainId'],
+  url: ({ chainId }) =>
+    `https://indexer.daodao.zone/${chainId}/generic/_/communityPool/balances`,
+  ttl: 60,
+  // No need to auto-revalidate since this query is quick.
+  revalidate: false,
+}
+
 export const daodaoCommunityPoolHistoryQuery: Query<
   | {
       // Map of denom to balance.
@@ -150,11 +209,108 @@ export const daodaoCommunityPoolHistoryQuery: Query<
     range !== TimeRange.Hour && range !== TimeRange.Day,
 }
 
-/**
- * The address passed to the query to indicate that it should load tokens from
- * the community pool instead.
- */
-const COMMUNITY_POOL_ADDRESS_PLACEHOLDER = 'COMMUNITY_POOL'
+export const daodaoValueQuery: Query<
+  {
+    assets: {
+      asset: SkipAsset
+      balance: string
+      price: number
+      value: number
+    }[]
+    totalValue: number
+  },
+  {
+    chainId: string
+    address: string
+    // Optionally filter by token denom/address. Comma separated.
+    tokenFilter?: string
+  }
+> = {
+  type: QueryType.Custom,
+  name: 'daodao-value',
+  parameters: ['chainId', 'address'],
+  optionalParameters: ['tokenFilter'],
+  execute: async ({ chainId, address, tokenFilter: _tokenFilter }, query) => {
+    const tokenFilter = _tokenFilter?.split(',')
+    const isCommunityPool = address === COMMUNITY_POOL_ADDRESS_PLACEHOLDER
+
+    const [{ body: nativeBody }, { body: cw20Body }] = await Promise.all([
+      isCommunityPool
+        ? query(daodaoCommunityPoolQuery, {
+            chainId,
+          })
+        : query(daodaoBankBalancesQuery, {
+            chainId,
+            address,
+          }),
+      query(daodaoCw20BalancesQuery, {
+        chainId,
+        address,
+      }),
+    ])
+
+    const uniqueAssets = uniq([
+      ...Object.keys(nativeBody).filter(
+        (denom) => !tokenFilter || tokenFilter.includes(denom)
+      ),
+      ...cw20Body
+        .map(({ contractAddress }) => contractAddress)
+        .filter(
+          (contractAddress) =>
+            !tokenFilter || tokenFilter.includes(contractAddress)
+        )
+        .map((contractAddress) => `cw20:${contractAddress}`),
+    ])
+
+    const assets = (
+      await Promise.all(
+        uniqueAssets.map(async (denom) => {
+          const cw20 = denom.startsWith('cw20:')
+          denom = cw20 ? denom.slice(5) : denom
+
+          const { body: asset } = await query(skipAssetQuery, {
+            chainId,
+            denom,
+            cw20: cw20.toString(),
+          })
+          if (!asset?.coingecko_id || !asset.decimals) {
+            return
+          }
+
+          const { body: price } = await query(coingeckoPriceQuery, {
+            id: asset.coingecko_id,
+          })
+
+          const balance = cw20
+            ? cw20Body.find(({ contractAddress }) => contractAddress === denom)
+                ?.balance
+            : nativeBody[denom]
+
+          return balance
+            ? {
+                asset,
+                balance,
+                price,
+                value: price * (Number(balance) / Math.pow(10, asset.decimals)),
+              }
+            : undefined
+        })
+      )
+    )
+      .flatMap((data) => data || [])
+      .sort((a, b) => b.value - a.value)
+
+    const totalValue = assets.reduce((acc, { value }) => acc + (value || 0), 0)
+
+    return {
+      assets,
+      totalValue,
+    }
+  },
+  ttl: 60,
+  // No need to auto-revalidate since this query is quick.
+  revalidate: false,
+}
 
 export const daodaoValueHistoryQuery: Query<
   {
@@ -180,6 +336,7 @@ export const daodaoValueHistoryQuery: Query<
   type: QueryType.Custom,
   name: 'daodao-value-history',
   parameters: ['chainId', 'address', 'range'],
+  optionalParameters: ['tokenFilter'],
   validate: ({ range }) => isValidTimeRange(range),
   execute: async (
     { chainId, address, range, tokenFilter: _tokenFilter },
@@ -361,6 +518,131 @@ export const daodaoValueHistoryQuery: Query<
   revalidate: ({ range }) => range !== TimeRange.Hour,
 }
 
+export const daodaoManyValueQuery: Query<
+  {
+    accounts: {
+      chainId: string
+      address: string
+      assets: {
+        asset: SkipAsset
+        balance: string
+        price: number
+        value: number
+      }[]
+      totalValue: number
+    }[]
+    assets: {
+      origin: {
+        chainId: string
+        denom: string
+      }
+      value: number
+    }[]
+    total: number
+  },
+  {
+    // Comma-separated list of <chainId>:<address>
+    accounts: string
+    // Optionally filter by tokens. Comma-separated list of
+    // <chainId>:<denomOrAddress>.
+    tokenFilter?: string
+  }
+> = {
+  type: QueryType.Custom,
+  name: 'daodao-many-value',
+  parameters: ['accounts'],
+  optionalParameters: ['tokenFilter'],
+  validate: ({ accounts }) =>
+    accounts.split(',').every((account) => account.includes(':')),
+  execute: async (
+    { accounts: _accounts, tokenFilter: _tokenFilter },
+    query
+  ) => {
+    // Group by chain ID.
+    const tokenFilter = _tokenFilter?.split(',').reduce(
+      (acc, filter) => {
+        const [chainId, denomOrAddress] = filter.split(':')
+        return {
+          ...acc,
+          [chainId]: [...(acc[chainId] || []), denomOrAddress],
+        }
+      },
+      {} as Record<string, string[]>
+    )
+
+    const accounts = (
+      await Promise.allSettled(
+        _accounts.split(',').map(async (account) => {
+          const [chainId, address] = account.split(':')
+          return {
+            chainId,
+            address,
+            ...(
+              await query(daodaoValueQuery, {
+                chainId,
+                address,
+                tokenFilter: tokenFilter?.[chainId].join(','),
+              })
+            ).body,
+          }
+        })
+      )
+    )
+      // Ignore failed queries.
+      .flatMap((result) => (result.status === 'fulfilled' ? result.value : []))
+
+    if (!accounts.length) {
+      return {
+        accounts: [],
+        assets: [],
+        total: 0,
+      }
+    }
+
+    // Get unique tokens across all accounts.
+    const uniqueAssetOrigins = uniq(
+      accounts.flatMap(({ assets }) =>
+        assets.map(({ asset }) => serializeSkipAssetOrigin(asset))
+      )
+    )
+
+    const assets = uniqueAssetOrigins
+      .map((assetOrigin) => {
+        // Get the value of this asset for each account.
+        const accountAssetValues = accounts
+          .map(
+            ({ assets }) =>
+              assets.find(
+                ({ asset }) => serializeSkipAssetOrigin(asset) === assetOrigin
+              )?.value
+          )
+          .flatMap((v) => (v ? [v] : []))
+
+        // Sum account values.
+        const value = accountAssetValues.reduce((acc, v) => acc + v)
+
+        return {
+          origin: deserializeSkipAssetOrigin(assetOrigin),
+          value,
+        }
+      })
+      .sort((a, b) => b.value - a.value)
+
+    const total = accounts
+      .map(({ totalValue }) => totalValue)
+      .reduce((acc, v) => acc + v, 0)
+
+    return {
+      accounts,
+      assets,
+      total,
+    }
+  },
+  ttl: 60,
+  // No need to auto-revalidate since this query is quick.
+  revalidate: false,
+}
+
 export const daodaoManyValueHistoryQuery: Query<
   {
     timestamps: number[]
@@ -387,6 +669,7 @@ export const daodaoManyValueHistoryQuery: Query<
   type: QueryType.Custom,
   name: 'daodao-many-value-history',
   parameters: ['accounts', 'range'],
+  optionalParameters: ['tokenFilter'],
   validate: ({ accounts, range }) =>
     accounts.split(',').every((account) => account.includes(':')) &&
     isValidTimeRange(range),
