@@ -560,16 +560,17 @@ export const daodaoManyValueQuery: Query<
     query
   ) => {
     // Group by chain ID.
-    const tokenFilter = _tokenFilter?.split(',').reduce(
-      (acc, filter) => {
-        const [chainId, denomOrAddress] = filter.split(':')
-        return {
-          ...acc,
-          [chainId]: [...(acc[chainId] || []), denomOrAddress],
-        }
-      },
-      {} as Record<string, string[]>
-    )
+    const tokenFilter =
+      _tokenFilter?.split(',').reduce(
+        (acc, filter) => {
+          const [chainId, denomOrAddress] = filter.split(':')
+          return {
+            ...acc,
+            [chainId]: [...(acc[chainId] || []), denomOrAddress],
+          }
+        },
+        {} as Record<string, string[]>
+      ) || {}
 
     const accounts = (
       await Promise.allSettled(
@@ -582,7 +583,7 @@ export const daodaoManyValueQuery: Query<
               await query(daodaoValueQuery, {
                 chainId,
                 address,
-                tokenFilter: tokenFilter?.[chainId].join(','),
+                tokenFilter: tokenFilter[chainId]?.join(','),
               })
             ).body,
           }
