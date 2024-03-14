@@ -13,6 +13,7 @@
     "serve:dev": "npm run build:watch -- --onSuccess 'npm run serve'",
     "revalidate": "node dist/scripts/revalidate.js",
     "flushQuery": "node dist/scripts/flushQuery.js",
+    "flushMatching": "node dist/scripts/flushMatching.js",
     "start": "pm2-runtime start ecosystem.config.js --watch",
     "start:dev": "docker compose -f compose.dev.yml up",
     "start:prod": "pm2 reload ecosystem.config.js"

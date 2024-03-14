@@ -2,6 +2,7 @@
   "entry": [
     "src/server/app.ts",
     "src/scripts/revalidate.ts",
+    "src/scripts/flushMatching.ts",
     "src/scripts/flushQuery.ts"
   ],
   "splitting": false,
