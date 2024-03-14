@@ -572,26 +572,22 @@ export const daodaoManyValueQuery: Query<
         {} as Record<string, string[]>
       ) || {}
 
-    const accounts = (
-      await Promise.allSettled(
-        _accounts.split(',').map(async (account) => {
-          const [chainId, address] = account.split(':')
-          return {
-            chainId,
-            address,
-            ...(
-              await query(daodaoValueQuery, {
-                chainId,
-                address,
-                tokenFilter: tokenFilter[chainId]?.join(','),
-              })
-            ).body,
-          }
-        })
-      )
+    const accounts = await Promise.all(
+      _accounts.split(',').map(async (account) => {
+        const [chainId, address] = account.split(':')
+        return {
+          chainId,
+          address,
+          ...(
+            await query(daodaoValueQuery, {
+              chainId,
+              address,
+              tokenFilter: tokenFilter[chainId]?.join(','),
+            })
+          ).body,
+        }
+      })
     )
-      // Ignore failed queries.
-      .flatMap((result) => (result.status === 'fulfilled' ? result.value : []))
 
     if (!accounts.length) {
       return {
@@ -688,23 +684,19 @@ export const daodaoManyValueHistoryQuery: Query<
       {} as Record<string, string[]>
     )
 
-    const accountHistories = (
-      await Promise.allSettled(
-        accounts.split(',').map(async (account) => {
-          const [chainId, address] = account.split(':')
-          return (
-            await query(daodaoValueHistoryQuery, {
-              chainId,
-              address,
-              range,
-              tokenFilter: tokenFilter?.[chainId].join(','),
-            })
-          ).body
-        })
-      )
+    const accountHistories = await Promise.all(
+      accounts.split(',').map(async (account) => {
+        const [chainId, address] = account.split(':')
+        return (
+          await query(daodaoValueHistoryQuery, {
+            chainId,
+            address,
+            range,
+            tokenFilter: tokenFilter?.[chainId].join(','),
+          })
+        ).body
+      })
     )
-      // Ignore failed queries.
-      .flatMap((result) => (result.status === 'fulfilled' ? result.value : []))
 
     if (!accountHistories.length) {
       return {
