@@ -1,7 +1,7 @@
 services:
   app:
     image: node:18
-    command: sh -c "npm run build && npm run start"
+    command: sh -c "npm install && npm run build && npm run serve:dev"
     working_dir: /usr/src/app
     ports:
       - 3030:3000

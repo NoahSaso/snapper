@@ -1,0 +1,11 @@
+{
+  "entry": [
+    "src/server/app.ts",
+    "src/scripts/revalidate.ts",
+    "src/scripts/flushQuery.ts"
+  ],
+  "splitting": false,
+  "sourcemap": false,
+  "clean": true,
+  "noExternal": ["@dao-dao/types", "@dao-dao/utils"]
+}

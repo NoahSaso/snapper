@@ -1,3 +1,4 @@
+import { polytoneNoteProxyMapToChainIdMap } from '@dao-dao/utils'
 import uniq from 'lodash.uniq'
 
 import { Query, QueryType } from '@/types'
@@ -11,6 +12,7 @@ import {
 } from '@/utils'
 
 import { coingeckoPriceHistoryQuery, coingeckoPriceQuery } from './coingecko'
+import { icaRemoteAddressQuery } from './ibc'
 import { SkipAsset, skipAssetQuery } from './skip'
 
 /**
@@ -518,28 +520,32 @@ export const daodaoValueHistoryQuery: Query<
   revalidate: ({ range }) => range !== TimeRange.Hour,
 }
 
-export const daodaoManyValueQuery: Query<
-  {
-    accounts: {
-      chainId: string
-      address: string
-      assets: {
-        asset: SkipAsset
-        balance: string
-        price: number
-        value: number
-      }[]
-      totalValue: number
-    }[]
+export type ManyValueResponse = {
+  accounts: {
+    // Used in daodaoTvlQuery.
+    type?: string
+    chainId: string
+    address: string
     assets: {
-      origin: {
-        chainId: string
-        denom: string
-      }
+      asset: SkipAsset
+      balance: string
+      price: number
       value: number
     }[]
-    total: number
-  },
+    totalValue: number
+  }[]
+  assets: {
+    origin: {
+      chainId: string
+      denom: string
+    }
+    value: number
+  }[]
+  total: number
+}
+
+export const daodaoManyValueQuery: Query<
+  ManyValueResponse,
   {
     // Comma-separated list of <chainId>:<address>
     accounts: string
@@ -619,7 +625,7 @@ export const daodaoManyValueQuery: Query<
           .flatMap((v) => (v ? [v] : []))
 
         // Sum account values.
-        const value = accountAssetValues.reduce((acc, v) => acc + v)
+        const value = accountAssetValues.reduce((acc, v) => acc + v, 0)
 
         return {
           origin: deserializeSkipAssetOrigin(assetOrigin),
@@ -816,4 +822,204 @@ export const daodaoManyValueHistoryQuery: Query<
         : 24 * 60 * 60,
   // No need to auto-revalidate for short ranges.
   revalidate: ({ range }) => range !== TimeRange.Hour,
+}
+
+export const daodaoListItemsQuery: Query<
+  // List of key and value.
+  [string, string][],
+  {
+    chainId: string
+    address: string
+  }
+> = {
+  type: QueryType.Url,
+  name: 'daodao-list-items',
+  parameters: ['chainId', 'address'],
+  url: ({ chainId, address }) =>
+    `https://indexer.daodao.zone/${chainId}/contract/${address}/daoCore/listItems`,
+  ttl: 30,
+  // No need to auto-revalidate since this query is quick.
+  revalidate: false,
+}
+
+export const daodaoListItemsWithPrefixQuery: Query<
+  // List of key and value, where key has the prefix removed.
+  [string, string][],
+  {
+    chainId: string
+    address: string
+    prefix: string
+  }
+> = {
+  type: QueryType.Custom,
+  name: 'daodao-list-items-with-prefix',
+  parameters: ['chainId', 'address', 'prefix'],
+  execute: async ({ chainId, address, prefix }, query) =>
+    (await query(daodaoListItemsQuery, { chainId, address })).body
+      .filter(([key]) => key.startsWith(prefix))
+      .map(([key, value]) => [key.slice(prefix.length), value]),
+  ttl: 30,
+  // No need to auto-revalidate since this query is quick.
+  revalidate: false,
+}
+
+export const daodaoIcasQuery: Query<
+  // List of chain ID and address of ICAs.
+  {
+    chainId: string
+    address: string
+  }[],
+  {
+    chainId: string
+    address: string
+  }
+> = {
+  type: QueryType.Custom,
+  name: 'daodao-icas',
+  parameters: ['chainId', 'address'],
+  execute: async ({ chainId, address }, query) =>
+    (
+      await Promise.allSettled(
+        (
+          await query(daodaoListItemsWithPrefixQuery, {
+            chainId,
+            address,
+            prefix: 'ica:',
+          })
+        ).body.map(async ([key]) => ({
+          chainId: key,
+          address: (
+            await query(icaRemoteAddressQuery, {
+              address,
+              srcChainId: chainId,
+              destChainId: key,
+            })
+          ).body,
+        }))
+      )
+    ).flatMap((p) => (p.status === 'fulfilled' ? p.value : [])),
+  ttl: 30,
+  // No need to auto-revalidate since this query is quick.
+  revalidate: false,
+}
+
+export const daodaoPolytoneAccountsQuery: Query<
+  // List of chain ID and address of ICAs.
+  {
+    chainId: string
+    address: string
+  }[],
+  {
+    chainId: string
+    address: string
+  }
+> = {
+  type: QueryType.Url,
+  name: 'daodao-polytone-accounts',
+  parameters: ['chainId', 'address'],
+  // Mapping from polytone note contract to remote proxy address.
+  url: ({ chainId, address }) =>
+    `https://indexer.daodao.zone/${chainId}/contract/${address}/daoCore/polytoneProxies`,
+  transform: (body, { chainId }) =>
+    Object.entries(
+      polytoneNoteProxyMapToChainIdMap(
+        chainId,
+        (body || {}) as Record<string, string>
+      )
+    ).map(([chainId, address]) => ({
+      chainId,
+      address,
+    })),
+  ttl: 30,
+  // No need to auto-revalidate since this query is quick.
+  revalidate: false,
+}
+
+export const daodaoAccountsQuery: Query<
+  // List of chain ID and address of ICAs.
+  {
+    type: string
+    chainId: string
+    address: string
+  }[],
+  {
+    chainId: string
+    address: string
+  }
+> = {
+  type: QueryType.Custom,
+  name: 'daodao-accounts',
+  parameters: ['chainId', 'address'],
+  execute: async ({ chainId, address }, query) => {
+    const [{ body: icas }, { body: polytoneAccounts }] = await Promise.all([
+      await query(daodaoIcasQuery, {
+        chainId,
+        address,
+      }),
+      await query(daodaoPolytoneAccountsQuery, {
+        chainId,
+        address,
+      }),
+    ])
+
+    return [
+      // Native account.
+      {
+        type: 'base',
+        chainId,
+        address,
+      },
+      // Polytone accounts.
+      ...polytoneAccounts.map((account) => ({
+        type: 'polytone',
+        ...account,
+      })),
+      // ICAs.
+      ...icas.map((account) => ({
+        type: 'ica',
+        ...account,
+      })),
+    ]
+  },
+  ttl: 30,
+  // No need to auto-revalidate since this query is quick.
+  revalidate: false,
+}
+
+export const daodaoTvlQuery: Query<
+  ManyValueResponse,
+  {
+    chainId: string
+    address: string
+  }
+> = {
+  type: QueryType.Custom,
+  name: 'daodao-tvl',
+  parameters: ['chainId', 'address'],
+  execute: async ({ chainId, address }, query) => {
+    const { body: _accounts } = await query(daodaoAccountsQuery, {
+      chainId,
+      address,
+    })
+
+    const accounts = _accounts
+      .map(({ chainId, address }) => `${chainId}:${address}`)
+      .join(',')
+
+    const { body: value } = await query(daodaoManyValueQuery, {
+      accounts,
+    })
+
+    // Add types to accounts.
+    value.accounts.forEach((account) => {
+      account.type = _accounts.find(
+        (a) => a.chainId === account.chainId && a.address === account.address
+      )?.type
+    })
+
+    return value
+  },
+  // Update once per hour.
+  ttl: 60 * 60,
+  revalidate: false,
 }

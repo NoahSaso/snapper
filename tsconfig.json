@@ -12,6 +12,8 @@
     "target": "es2020",
     "strict": true,
     "baseUrl": "src",
+    "skipLibCheck": true,
+    "jsx": "preserve",
     "paths": {
       "@/*": ["*"]
     }
