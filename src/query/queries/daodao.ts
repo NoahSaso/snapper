@@ -13,6 +13,7 @@ import {
 
 import { coingeckoPriceHistoryQuery, coingeckoPriceQuery } from './coingecko'
 import { icaRemoteAddressQuery } from './ibc'
+import { cosmosBalancesQuery } from './rpc'
 import { SkipAsset, skipAssetQuery } from './skip'
 
 /**
@@ -20,24 +21,6 @@ import { SkipAsset, skipAssetQuery } from './skip'
  * the community pool instead.
  */
 const COMMUNITY_POOL_ADDRESS_PLACEHOLDER = 'COMMUNITY_POOL'
-
-export const daodaoBankBalancesQuery: Query<
-  // Map of denom to balance.
-  Record<string, string | undefined>,
-  {
-    chainId: string
-    address: string
-  }
-> = {
-  type: QueryType.Url,
-  name: 'daodao-bank-balances',
-  parameters: ['chainId', 'address'],
-  url: ({ chainId, address }) =>
-    `https://indexer.daodao.zone/${chainId}/wallet/${address}/bank/balances`,
-  ttl: 60,
-  // No need to auto-revalidate since this query is quick.
-  revalidate: false,
-}
 
 export const daodaoBankBalancesHistoryQuery: Query<
   | {
@@ -236,15 +219,22 @@ export const daodaoValueQuery: Query<
     const tokenFilter = _tokenFilter?.split(',')
     const isCommunityPool = address === COMMUNITY_POOL_ADDRESS_PLACEHOLDER
 
-    const [{ body: nativeBody }, { body: cw20Body }] = await Promise.all([
+    const [
+      { body: communityPoolBody },
+      { body: nativeBody },
+      { body: cw20Body },
+    ] = await Promise.all([
       isCommunityPool
         ? query(daodaoCommunityPoolQuery, {
             chainId,
           })
-        : query(daodaoBankBalancesQuery, {
+        : { body: {} as Record<string, string | undefined> },
+      !isCommunityPool
+        ? query(cosmosBalancesQuery, {
             chainId,
             address,
-          }),
+          })
+        : { body: [] },
       query(daodaoCw20BalancesQuery, {
         chainId,
         address,
@@ -252,8 +242,11 @@ export const daodaoValueQuery: Query<
     ])
 
     const uniqueAssets = uniq([
-      ...Object.keys(nativeBody).filter(
+      ...Object.keys(communityPoolBody).filter(
         (denom) => !tokenFilter || tokenFilter.includes(denom)
+      ),
+      ...nativeBody.flatMap(({ denom }) =>
+        !tokenFilter || tokenFilter.includes(denom) ? denom : []
       ),
       ...cw20Body
         .map(({ contractAddress }) => contractAddress)
@@ -286,7 +279,9 @@ export const daodaoValueQuery: Query<
           const balance = cw20
             ? cw20Body.find(({ contractAddress }) => contractAddress === denom)
                 ?.balance
-            : nativeBody[denom]
+            : isCommunityPool
+              ? communityPoolBody[denom]
+              : nativeBody.find((coin) => coin.denom === denom)?.amount
 
           return balance
             ? {

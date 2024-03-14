@@ -4,7 +4,6 @@ import { coingeckoPriceHistoryQuery, coingeckoPriceQuery } from './coingecko'
 import {
   daodaoAccountsQuery,
   daodaoBankBalancesHistoryQuery,
-  daodaoBankBalancesQuery,
   daodaoCommunityPoolHistoryQuery,
   daodaoCommunityPoolQuery,
   daodaoCw20BalancesHistoryQuery,
@@ -23,6 +22,7 @@ import {
   ibcTransferInfoQuery,
   icaRemoteAddressQuery,
 } from './ibc'
+import { cosmosBalancesQuery } from './rpc'
 import {
   skipAssetQuery,
   skipAssetsQuery,
@@ -34,7 +34,6 @@ import {
 export const queries: Query<any, any>[] = [
   coingeckoPriceQuery,
   coingeckoPriceHistoryQuery,
-  daodaoBankBalancesQuery,
   daodaoBankBalancesHistoryQuery,
   daodaoCw20BalancesQuery,
   daodaoCw20BalancesHistoryQuery,
@@ -57,4 +56,5 @@ export const queries: Query<any, any>[] = [
   skipAssetsQuery,
   skipAssetQuery,
   skipRecommendedAssetsQuery,
+  cosmosBalancesQuery,
 ]
