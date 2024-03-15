@@ -82,6 +82,10 @@ export const fetchQuery = async <
         if (error.response?.status === 429) {
           throw new Error('429 too many requests')
         }
+
+        if (error.response?.data) {
+          throw new Error(`${error.response.data}`)
+        }
       }
 
       throw error

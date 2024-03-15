@@ -1,4 +1,12 @@
-import { polytoneNoteProxyMapToChainIdMap } from '@dao-dao/utils'
+import {
+  ContractName,
+  DAO_CORE_CONTRACT_NAMES,
+  INVALID_CONTRACT_ERROR_SUBSTRINGS,
+  POLYTONE_CONFIG_PER_CHAIN,
+  encodeMessageAsBase64,
+  parseEncodedMessage,
+  polytoneNoteProxyMapToChainIdMap,
+} from '@dao-dao/utils'
 import uniq from 'lodash.uniq'
 
 import { Query, QueryType } from '@/types'
@@ -13,7 +21,7 @@ import {
 
 import { coingeckoPriceHistoryQuery, coingeckoPriceQuery } from './coingecko'
 import { icaRemoteAddressQuery } from './ibc'
-import { cosmosBalancesQuery } from './rpc'
+import { cosmosBalancesQuery, cosmosIsIcaQuery } from './rpc'
 import { SkipAsset, skipAssetQuery } from './skip'
 
 /**
@@ -939,6 +947,44 @@ export const daodaoAccountsQuery: Query<
   name: 'daodao-accounts',
   parameters: ['chainId', 'address'],
   execute: async ({ chainId, address }, query) => {
+    const [{ body: isIca }, { body: isPolytoneProxy }] = await Promise.all([
+      query(cosmosIsIcaQuery, {
+        chainId,
+        address,
+      }),
+      query(daodaoIsPolytoneProxyQuery, {
+        chainId,
+        address,
+      }),
+    ])
+
+    // For now, error for ICAs since we can't resolve controller from a host.
+    if (isIca) {
+      throw new Error('ICA reverse lookup not yet supported')
+    }
+    // Reverse lookup DAO from polytone proxy.
+    if (isPolytoneProxy) {
+      const { body: reverseLookup } = await query(
+        daodaoReverseLookupPolytoneProxyQuery,
+        {
+          chainId,
+          proxy: address,
+        }
+      )
+
+      chainId = reverseLookup.chainId
+      address = reverseLookup.address
+    }
+
+    const { body: isDao } = await query(daodaoIsDaoQuery, {
+      chainId,
+      address,
+    })
+
+    if (!isDao) {
+      throw new Error('not a DAO')
+    }
+
     const [{ body: icas }, { body: polytoneAccounts }] = await Promise.all([
       await query(daodaoIcasQuery, {
         chainId,
@@ -1010,4 +1056,199 @@ export const daodaoTvlQuery: Query<
   // Update once per hour.
   ttl: 60 * 60,
   revalidate: false,
+}
+
+export const daodaoIndexerContractQuery: Query<
+  any,
+  {
+    chainId: string
+    address: string
+    formula: string
+    // Base64-encoded JSON object.
+    args?: string
+  }
+> = {
+  type: QueryType.Url,
+  name: 'daodao-indexer-contract',
+  parameters: ['chainId', 'address', 'formula'],
+  optionalParameters: ['args'],
+  // If args is defined, ensure it parses correctly. Otherwise, no args is also
+  // valid.
+  validate: ({ args }) =>
+    args ? parseEncodedMessage(args) !== undefined : true,
+  url: ({ chainId, address, formula, args }) =>
+    `https://indexer.daodao.zone/${chainId}/contract/${address}/${formula}?${new URLSearchParams(
+      parseEncodedMessage(args)
+    ).toString()}`,
+  // Once every 5 seconds, since this may change at every chain block.
+  ttl: 5,
+  revalidate: false,
+}
+
+export const daodaoIsContractQuery: Query<
+  boolean,
+  {
+    chainId: string
+    address: string
+    name?: string
+    names?: string
+  }
+> = {
+  type: QueryType.Custom,
+  name: 'daodao-is-contract',
+  parameters: ['chainId', 'address'],
+  // Only one of `name` or `names` is required. `names` is a comma-separated
+  // list of contract names.
+  optionalParameters: ['name', 'names'],
+  validate: ({ name, names }) => {
+    if (!name && !names) {
+      throw new Error('Either `name` or `names` is required')
+    }
+
+    if (name && names) {
+      throw new Error('Only one of `name` or `names` is allowed')
+    }
+
+    return true
+  },
+  execute: async ({ chainId, address, name, names }, query) => {
+    try {
+      const {
+        body: { contract },
+      } = await query(daodaoIndexerContractQuery, {
+        chainId,
+        address,
+        formula: 'info',
+      })
+
+      return name
+        ? contract.includes(name)
+        : names
+          ? names.split(',').some((name) => contract.includes(name))
+          : false
+    } catch (err) {
+      if (
+        err instanceof Error &&
+        INVALID_CONTRACT_ERROR_SUBSTRINGS.some((substring) =>
+          (err as Error).message.includes(substring)
+        )
+      ) {
+        return false
+      }
+
+      // Rethrow other errors because it should not have failed.
+      throw err
+    }
+  },
+  // Update once per week.
+  ttl: 7 * 24 * 60 * 60,
+  revalidate: true,
+}
+
+export const daodaoIsDaoQuery: Query<
+  boolean,
+  {
+    chainId: string
+    address: string
+  }
+> = {
+  type: QueryType.Custom,
+  name: 'daodao-is-dao',
+  parameters: ['chainId', 'address'],
+  execute: async ({ chainId, address }, query) =>
+    (
+      await query(daodaoIsContractQuery, {
+        chainId,
+        address,
+        names: DAO_CORE_CONTRACT_NAMES.join(','),
+      })
+    ).body,
+  // Update once per week. Really this should never change...
+  ttl: 7 * 24 * 60 * 60,
+  revalidate: true,
+}
+
+export const daodaoIsPolytoneProxyQuery: Query<
+  boolean,
+  {
+    chainId: string
+    address: string
+  }
+> = {
+  type: QueryType.Custom,
+  name: 'daodao-is-polytone-proxy',
+  parameters: ['chainId', 'address'],
+  execute: async ({ chainId, address }, query) =>
+    (
+      await query(daodaoIsContractQuery, {
+        chainId,
+        address,
+        name: ContractName.PolytoneProxy,
+      })
+    ).body,
+  // Update once per week. Really this should never change...
+  ttl: 7 * 24 * 60 * 60,
+  revalidate: true,
+}
+
+/**
+ * Given a polytone proxy, get the source chain, address, and polytone note.
+ */
+export const daodaoReverseLookupPolytoneProxyQuery: Query<
+  {
+    chainId: string
+    address: string
+    note: string
+  },
+  {
+    chainId: string
+    proxy: string
+  }
+> = {
+  type: QueryType.Custom,
+  name: 'daodao-reverse-lookup-polytone-proxy',
+  parameters: ['chainId', 'proxy'],
+  execute: async ({ chainId, proxy }, query) => {
+    const { body: voice } = await query(daodaoIndexerContractQuery, {
+      chainId,
+      address: proxy,
+      formula: 'polytone/proxy/instantiator',
+    })
+
+    if (typeof voice !== 'string') {
+      throw new Error('No voice found')
+    }
+
+    const srcPolytoneInfo = POLYTONE_CONFIG_PER_CHAIN.find(([, config]) =>
+      Object.entries(config).some(
+        ([destChainId, connection]) =>
+          destChainId === chainId && connection.voice === voice
+      )
+    )
+    if (!srcPolytoneInfo) {
+      throw new Error('No polytone config found for voice')
+    }
+
+    const { body: address } = await query(daodaoIndexerContractQuery, {
+      chainId,
+      address: voice,
+      formula: 'polytone/voice/remoteController',
+      args: encodeMessageAsBase64({
+        address: proxy,
+      }),
+    })
+
+    if (typeof address !== 'string') {
+      throw new Error('No address found')
+    }
+
+    return {
+      chainId: srcPolytoneInfo[0],
+      address,
+      note: srcPolytoneInfo[1][chainId].note,
+    }
+  },
+  // Update once per week. Really this should never change...
+  ttl: 7 * 24 * 60 * 60,
+  revalidate: true,
 }

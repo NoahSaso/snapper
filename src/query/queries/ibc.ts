@@ -136,7 +136,9 @@ export const icaRemoteAddressQuery: Query<
     return true
   },
   execute: async ({ address, srcChainId, destChainId }, query) => {
-    const sourceChainName = getChainForChainId(srcChainId)?.chain_name
+    // Validated above.
+    const sourceChainName = getChainForChainId(srcChainId)!.chain_name
+
     const {
       body: {
         sourceChain: { connection_id },
