@@ -1,3 +1,4 @@
+import { Coin } from '@cosmjs/stargate'
 import {
   ContractName,
   DAO_CORE_CONTRACT_NAMES,
@@ -231,27 +232,45 @@ export const daodaoValueQuery: Query<
     const tokenFilter = _tokenFilter?.split(',')
     const isCommunityPool = address === COMMUNITY_POOL_ADDRESS_PLACEHOLDER
 
-    const [
-      { body: communityPoolBody },
-      { body: nativeBody },
-      { body: cw20Body },
-    ] = await Promise.all([
-      isCommunityPool
-        ? query(daodaoCommunityPoolQuery, {
-            chainId,
-          })
-        : { body: {} as Record<string, string | undefined> },
-      !isCommunityPool
-        ? query(cosmosBalancesQuery, {
-            chainId,
-            address,
-          })
-        : { body: [] },
-      query(daodaoCw20BalancesQuery, {
-        chainId,
-        address,
-      }),
-    ])
+    let communityPoolBody: Record<string, string | undefined>
+    let nativeBody: readonly Coin[]
+    let cw20Body: {
+      contractAddress: string
+      balance: string
+    }[]
+    try {
+      const [
+        { body: _communityPoolBody },
+        { body: _nativeBody },
+        { body: _cw20Body },
+      ] = await Promise.all([
+        isCommunityPool
+          ? query(daodaoCommunityPoolQuery, {
+              chainId,
+            })
+          : { body: {} as Record<string, string | undefined> },
+        !isCommunityPool
+          ? query(cosmosBalancesQuery, {
+              chainId,
+              address,
+            })
+          : { body: [] },
+        query(daodaoCw20BalancesQuery, {
+          chainId,
+          address,
+        }),
+      ])
+
+      communityPoolBody = _communityPoolBody
+      nativeBody = _nativeBody
+      cw20Body = _cw20Body
+    } catch (err) {
+      if (err instanceof Error && err.message === 'Invalid chain ID') {
+        throw new Error('Unsupported chain for value query')
+      }
+
+      throw err
+    }
 
     const uniqueAssets = uniq([
       ...Object.keys(communityPoolBody).filter(
@@ -355,29 +374,51 @@ export const daodaoValueHistoryQuery: Query<
     const end = Date.now().toString()
     const isCommunityPool = address === COMMUNITY_POOL_ADDRESS_PLACEHOLDER
 
-    const [{ body: nativeBody }, { body: cw20Body }] = await Promise.all([
-      isCommunityPool
-        ? query(daodaoCommunityPoolHistoryQuery, {
-            chainId,
-            range,
-            end,
-          })
-        : query(daodaoBankBalancesHistoryQuery, {
-            chainId,
-            address,
-            range,
-            end,
-          }),
-      query(daodaoCw20BalancesHistoryQuery, {
-        chainId,
-        address,
-        range,
-        end,
-      }),
-    ])
+    let nativeSnapshots: {
+      value: Record<string, string | undefined>
+      blockHeight: number
+      blockTimeUnixMs: number
+    }[]
+    let cw20Snapshots: {
+      value: {
+        contractAddress: string
+        balance: string
+      }[]
+      blockHeight: number
+      blockTimeUnixMs: number
+    }[]
 
-    const nativeSnapshots = nativeBody || []
-    const cw20Snapshots = cw20Body || []
+    try {
+      const [{ body: nativeBody }, { body: cw20Body }] = await Promise.all([
+        isCommunityPool
+          ? query(daodaoCommunityPoolHistoryQuery, {
+              chainId,
+              range,
+              end,
+            })
+          : query(daodaoBankBalancesHistoryQuery, {
+              chainId,
+              address,
+              range,
+              end,
+            }),
+        query(daodaoCw20BalancesHistoryQuery, {
+          chainId,
+          address,
+          range,
+          end,
+        }),
+      ])
+
+      nativeSnapshots = nativeBody || []
+      cw20Snapshots = cw20Body || []
+    } catch (err) {
+      if (err instanceof Error && err.message === 'Invalid chain ID') {
+        throw new Error('Unsupported chain for value history query')
+      }
+
+      throw err
+    }
 
     const uniqueAssets = uniq([
       ...nativeSnapshots
@@ -587,16 +628,30 @@ export const daodaoManyValueQuery: Query<
     const accounts = await Promise.all(
       _accounts.split(',').map(async (account) => {
         const [chainId, address] = account.split(':')
-        return {
-          chainId,
-          address,
-          ...(
-            await query(daodaoValueQuery, {
+        try {
+          return {
+            chainId,
+            address,
+            ...(
+              await query(daodaoValueQuery, {
+                chainId,
+                address,
+                tokenFilter: tokenFilter[chainId]?.join(','),
+              })
+            ).body,
+          }
+        } catch (err) {
+          // If the account is on a chain that is unsupported, ignore.
+          if (err instanceof Error && err.message.includes('Unsupported')) {
+            return {
               chainId,
               address,
-              tokenFilter: tokenFilter[chainId]?.join(','),
-            })
-          ).body,
+              assets: [],
+              totalValue: 0,
+            }
+          }
+
+          throw err
         }
       })
     )
@@ -699,14 +754,26 @@ export const daodaoManyValueHistoryQuery: Query<
     const accountHistories = await Promise.all(
       accounts.split(',').map(async (account) => {
         const [chainId, address] = account.split(':')
-        return (
-          await query(daodaoValueHistoryQuery, {
-            chainId,
-            address,
-            range,
-            tokenFilter: tokenFilter?.[chainId].join(','),
-          })
-        ).body
+        try {
+          return (
+            await query(daodaoValueHistoryQuery, {
+              chainId,
+              address,
+              range,
+              tokenFilter: tokenFilter?.[chainId].join(','),
+            })
+          ).body
+        } catch (err) {
+          // If the account is on a chain that is unsupported, ignore.
+          if (err instanceof Error && err.message.includes('Unsupported')) {
+            return {
+              assets: [],
+              snapshots: [],
+            }
+          }
+
+          throw err
+        }
       })
     )
 
