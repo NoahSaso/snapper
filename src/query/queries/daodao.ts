@@ -968,16 +968,24 @@ export const daodaoAccountsQuery: Query<
     }
     // Reverse lookup DAO from polytone proxy.
     if (isPolytoneProxy) {
-      const { body: reverseLookup } = await query(
-        daodaoReverseLookupPolytoneProxyQuery,
-        {
-          chainId,
-          proxy: address,
-        }
-      )
+      try {
+        const { body: reverseLookup } = await query(
+          daodaoReverseLookupPolytoneProxyQuery,
+          {
+            chainId,
+            proxy: address,
+          }
+        )
 
-      chainId = reverseLookup.chainId
-      address = reverseLookup.address
+        chainId = reverseLookup.chainId
+        address = reverseLookup.address
+      } catch (err) {
+        if (err instanceof Error && err.message === 'Invalid chain ID') {
+          throw new Error('Unsupported chain for polytone reverse lookup')
+        }
+
+        throw err
+      }
     }
 
     const { body: isDao } = await query(daodaoIsDaoQuery, {
