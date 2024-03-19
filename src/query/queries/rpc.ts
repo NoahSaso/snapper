@@ -1,3 +1,5 @@
+import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate'
+import { fromUtf8, toUtf8 } from '@cosmjs/encoding'
 import { StargateClient } from '@cosmjs/stargate'
 import { cosmos } from '@dao-dao/types/protobuf'
 import retry from 'async-await-retry'
@@ -13,6 +15,21 @@ const getStargateClient = (chainId: string) =>
   retry(
     () =>
       StargateClient.connect(
+        // Validated chain existence.
+        `https://rpc.cosmos.directory/${getChainForChainId(chainId)!.chain_name}`
+      ),
+    undefined,
+    {
+      retriesMax: 3,
+      interval: 100,
+      exponential: true,
+    }
+  )
+
+const getCosmWasmClient = (chainId: string) =>
+  retry(
+    () =>
+      CosmWasmClient.connect(
         // Validated chain existence.
         `https://rpc.cosmos.directory/${getChainForChainId(chainId)!.chain_name}`
       ),
@@ -62,6 +79,24 @@ const makeStargateQuery = <
   validate: validateChainId,
   execute: async (parameters) =>
     execute(await getStargateClient(parameters.chainId), parameters),
+  ttl: 5,
+  revalidate: false,
+})
+
+const makeCosmWasmQuery = <
+  Body = unknown,
+  Parameters extends Record<string, string> = Record<string, string>,
+>(
+  name: string,
+  parameters: string[],
+  execute: (client: CosmWasmClient, parameters: Parameters) => Promise<Body>
+): Query<Body, Parameters & { chainId: string }> => ({
+  type: QueryType.Custom,
+  name,
+  parameters: ['chainId', ...parameters],
+  validate: validateChainId,
+  execute: async (parameters) =>
+    execute(await getCosmWasmClient(parameters.chainId), parameters),
   ttl: 5,
   revalidate: false,
 })
@@ -132,6 +167,15 @@ export const cosmosIsIcaQuery: Query<
   ttl: 30 * 24 * 60 * 60,
   revalidate: true,
 }
+
+export const cosmosContractStateKeyQuery = makeCosmWasmQuery(
+  'cosmos-contract-state-key',
+  ['address', 'key'],
+  async (client, { address, key }) => {
+    const data = await client.queryContractRaw(address, toUtf8(key))
+    return data ? fromUtf8(data) : null
+  }
+)
 
 // TODO: write generalizable cosmos RPC querier
 // export const cosmosRpcQuery: Query<any, { chainId: string; query: string }> = {

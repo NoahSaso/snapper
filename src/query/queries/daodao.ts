@@ -21,7 +21,11 @@ import {
 
 import { coingeckoPriceHistoryQuery, coingeckoPriceQuery } from './coingecko'
 import { icaRemoteAddressQuery } from './ibc'
-import { cosmosBalancesQuery, cosmosIsIcaQuery } from './rpc'
+import {
+  cosmosBalancesQuery,
+  cosmosContractStateKeyQuery,
+  cosmosIsIcaQuery,
+} from './rpc'
 import { SkipAsset, skipAssetQuery } from './skip'
 
 /**
@@ -1112,20 +1116,14 @@ export const daodaoIsContractQuery: Query<
     return true
   },
   execute: async ({ chainId, address, name, names }, query) => {
+    let contract: string | undefined
     try {
-      const {
-        body: { contract },
-      } = await query(daodaoIndexerContractQuery, {
+      const { body } = await query(daodaoIndexerContractQuery, {
         chainId,
         address,
         formula: 'info',
       })
-
-      return name
-        ? contract.includes(name)
-        : names
-          ? names.split(',').some((name) => contract.includes(name))
-          : false
+      contract = body.contract
     } catch (err) {
       if (
         err instanceof Error &&
@@ -1135,10 +1133,42 @@ export const daodaoIsContractQuery: Query<
       ) {
         return false
       }
-
-      // Rethrow other errors because it should not have failed.
-      throw err
     }
+
+    // On failure, attempt to load from chain.
+    if (!contract) {
+      try {
+        const { body: data } = await query(cosmosContractStateKeyQuery, {
+          chainId,
+          address,
+          key: 'contract_info',
+        })
+        const info = data && JSON.parse(data)
+        if (info && typeof info.contract === 'string' && info.contract) {
+          contract = info.contract
+        }
+      } catch (err) {
+        if (
+          err instanceof Error &&
+          INVALID_CONTRACT_ERROR_SUBSTRINGS.some((substring) =>
+            (err as Error).message.includes(substring)
+          )
+        ) {
+          return false
+        }
+
+        // Rethrow other errors because it should not have failed.
+        throw err
+      }
+    }
+
+    return !contract
+      ? false
+      : name
+        ? contract.includes(name)
+        : names
+          ? names.split(',').some((name) => contract!.includes(name))
+          : false
   },
   // Update once per week.
   ttl: 7 * 24 * 60 * 60,
