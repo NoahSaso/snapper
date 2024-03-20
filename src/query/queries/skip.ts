@@ -109,7 +109,8 @@ export const skipAssetQuery: Query<
 
     return assets && Array.isArray(assets)
       ? assets.find(
-          (asset) => asset.denom === denom && (cw20 !== 'true' || asset.is_cw20)
+          (asset) =>
+            (cw20 !== 'true' ? asset.denom : asset.token_contract) === denom
         )
       : undefined
   },
@@ -150,4 +151,32 @@ export const skipRecommendedAssetsQuery: Query<
   ttl: 24 * 60 * 60,
   // No need to auto-revalidate since this query is quick.
   revalidate: false,
+}
+
+export const skipRecommendedAssetQuery: Query<
+  SkipAssetRecommendation | undefined,
+  {
+    sourceAssetChainId: string
+    sourceAssetDenom: string
+    destChainId: string
+  }
+> = {
+  type: QueryType.Custom,
+  name: 'skip-recommended-asset',
+  parameters: skipRecommendedAssetsQuery.parameters,
+  execute: async (params, query) => {
+    const { body: recommendations } = await query(
+      skipRecommendedAssetsQuery,
+      params
+    )
+
+    return (
+      recommendations.find(({ reason }) => reason === 'BASE_TOKEN') ||
+      recommendations.find(({ reason }) => reason === 'MOST_LIQUID') ||
+      recommendations.find(({ reason }) => reason === 'DIRECT') ||
+      recommendations[0]
+    )
+  },
+  ttl: skipRecommendedAssetsQuery.ttl,
+  revalidate: skipRecommendedAssetsQuery.revalidate,
 }

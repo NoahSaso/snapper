@@ -91,7 +91,9 @@ export const fetchQuery = async <
       throw error
     }
 
-    const body = query.transform?.(response.data, params) || response.data
+    const body = query.transform
+      ? query.transform(response.data, params)
+      : response.data
 
     queryState = {
       status: response.status,

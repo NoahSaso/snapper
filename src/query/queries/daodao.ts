@@ -23,8 +23,10 @@ import {
   serializeSkipAssetOrigin,
 } from '@/utils'
 
+import { astroportResolvedPriceQuery } from './astroport'
 import { coingeckoPriceHistoryQuery, coingeckoPriceQuery } from './coingecko'
 import { icaRemoteAddressQuery } from './ibc'
+import { osmosisPriceQuery } from './osmosis'
 import {
   cosmosBalancesQuery,
   cosmosClaimableRewardsQuery,
@@ -35,6 +37,7 @@ import {
 } from './rpc'
 import { SkipAsset, skipAssetQuery } from './skip'
 import { stargazeUsdValueQuery } from './stargaze'
+import { whiteWhalePriceQuery } from './whiteWhale'
 
 /**
  * The address passed to the query to indicate that it should load tokens from
@@ -214,6 +217,62 @@ export const daodaoCommunityPoolHistoryQuery: Query<
     range !== TimeRange.Hour && range !== TimeRange.Day,
 }
 
+export const daodaoPriceQuery: Query<
+  number,
+  {
+    chainId: string
+    denom: string
+    cw20?: string
+  }
+> = {
+  type: QueryType.Custom,
+  name: 'daodao-price',
+  parameters: ['chainId', 'denom'],
+  optionalParameters: ['cw20'],
+  execute: async ({ chainId, denom, cw20 }, query) => {
+    const { body: asset } = await query(skipAssetQuery, {
+      chainId,
+      denom,
+      cw20,
+    })
+    if (!asset) {
+      throw new Error('Asset not found')
+    }
+
+    // Load prices from all sources and use first that is available.
+    const price = (
+      await Promise.allSettled([
+        asset.coingecko_id
+          ? query(coingeckoPriceQuery, {
+              id: asset.coingecko_id,
+            })
+          : Promise.reject(),
+        query(osmosisPriceQuery, {
+          symbol: asset.recommended_symbol || asset.symbol,
+        }),
+        query(astroportResolvedPriceQuery, {
+          chainId,
+          denom: asset.denom,
+        }),
+        query(whiteWhalePriceQuery, {
+          symbol: asset.symbol,
+        }),
+      ])
+    ).flatMap((p) =>
+      p.status === 'fulfilled' && p.value.body !== undefined ? p.value : []
+    )[0]?.body
+
+    if (!price) {
+      throw new Error('Price not found')
+    }
+
+    return price
+  },
+  // Cache for 5 minutes.
+  ttl: 5 * 60,
+  revalidate: false,
+}
+
 type AssetWithValue = {
   asset: SkipAsset
   unstakedBalance: string
@@ -351,13 +410,24 @@ export const daodaoValueQuery: Query<
             denom,
             cw20: cw20.toString(),
           })
-          if (!asset?.coingecko_id || !asset.decimals) {
+          if (!asset?.decimals) {
             return
           }
 
-          const { body: price } = await query(coingeckoPriceQuery, {
-            id: asset.coingecko_id,
-          })
+          let price: number
+          try {
+            const priceResponse = await query(daodaoPriceQuery, {
+              chainId,
+              denom,
+              cw20: cw20.toString(),
+            })
+            price = priceResponse.body
+            if (typeof price !== 'number') {
+              return
+            }
+          } catch {
+            return
+          }
 
           const unstakedBalance =
             (cw20
