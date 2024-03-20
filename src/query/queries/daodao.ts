@@ -26,6 +26,7 @@ import {
   cosmosBalancesQuery,
   cosmosContractStateKeyQuery,
   cosmosIsIcaQuery,
+  cosmosStakedBalanceQuery,
 } from './rpc'
 import { SkipAsset, skipAssetQuery } from './skip'
 
@@ -211,7 +212,8 @@ export const daodaoValueQuery: Query<
   {
     assets: {
       asset: SkipAsset
-      balance: string
+      unstakedBalance: string
+      stakedBalance: string
       price: number
       value: number
     }[]
@@ -233,7 +235,8 @@ export const daodaoValueQuery: Query<
     const isCommunityPool = address === COMMUNITY_POOL_ADDRESS_PLACEHOLDER
 
     let communityPoolBody: Record<string, string | undefined>
-    let nativeBody: readonly Coin[]
+    let nativeUnstakedBody: readonly Coin[]
+    let nativeStakedBody: Coin | null
     let cw20Body: {
       contractAddress: string
       balance: string
@@ -241,7 +244,7 @@ export const daodaoValueQuery: Query<
     try {
       const [
         { body: _communityPoolBody },
-        { body: _nativeBody },
+        [{ body: _nativeUnstakedBody }, { body: _nativeStakedBody }],
         { body: _cw20Body },
       ] = await Promise.all([
         isCommunityPool
@@ -250,11 +253,17 @@ export const daodaoValueQuery: Query<
             })
           : { body: {} as Record<string, string | undefined> },
         !isCommunityPool
-          ? query(cosmosBalancesQuery, {
-              chainId,
-              address,
-            })
-          : { body: [] },
+          ? Promise.all([
+              query(cosmosBalancesQuery, {
+                chainId,
+                address,
+              }),
+              query(cosmosStakedBalanceQuery, {
+                chainId,
+                address,
+              }),
+            ])
+          : [{ body: [] }, { body: null }],
         query(daodaoCw20BalancesQuery, {
           chainId,
           address,
@@ -262,7 +271,8 @@ export const daodaoValueQuery: Query<
       ])
 
       communityPoolBody = _communityPoolBody
-      nativeBody = _nativeBody
+      nativeUnstakedBody = _nativeUnstakedBody
+      nativeStakedBody = _nativeStakedBody
       cw20Body = _cw20Body
     } catch (err) {
       if (err instanceof Error && err.message === 'Invalid chain ID') {
@@ -276,7 +286,10 @@ export const daodaoValueQuery: Query<
       ...Object.keys(communityPoolBody).filter(
         (denom) => !tokenFilter || tokenFilter.includes(denom)
       ),
-      ...nativeBody.flatMap(({ denom }) =>
+      ...[
+        ...nativeUnstakedBody,
+        ...(nativeStakedBody ? [nativeStakedBody] : []),
+      ].flatMap(({ denom }) =>
         !tokenFilter || tokenFilter.includes(denom) ? denom : []
       ),
       ...cw20Body
@@ -307,19 +320,27 @@ export const daodaoValueQuery: Query<
             id: asset.coingecko_id,
           })
 
-          const balance = cw20
+          const unstakedBalance = cw20
             ? cw20Body.find(({ contractAddress }) => contractAddress === denom)
                 ?.balance
             : isCommunityPool
               ? communityPoolBody[denom]
-              : nativeBody.find((coin) => coin.denom === denom)?.amount
+              : nativeUnstakedBody.find((coin) => coin.denom === denom)?.amount
+          const stakedBalance =
+            !cw20 && !isCommunityPool && denom === nativeStakedBody?.denom
+              ? nativeStakedBody.amount
+              : '0'
 
-          return balance
+          return unstakedBalance
             ? {
                 asset,
-                balance,
+                unstakedBalance,
+                stakedBalance,
                 price,
-                value: price * (Number(balance) / Math.pow(10, asset.decimals)),
+                value:
+                  price *
+                  ((Number(unstakedBalance) + Number(stakedBalance)) /
+                    Math.pow(10, asset.decimals)),
               }
             : undefined
         })
@@ -576,7 +597,8 @@ export type ManyValueResponse = {
     address: string
     assets: {
       asset: SkipAsset
-      balance: string
+      unstakedBalance: string
+      stakedBalance: string
       price: number
       value: number
     }[]

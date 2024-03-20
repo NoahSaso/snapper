@@ -109,6 +109,12 @@ export const cosmosBalancesQuery = makeStargateQuery(
   (client, { address }) => client.getAllBalances(address)
 )
 
+export const cosmosStakedBalanceQuery = makeStargateQuery(
+  'cosmos-staked-balance',
+  ['address'],
+  (client, { address }) => client.getBalanceStaked(address)
+)
+
 export const cosmosAccountTypeQuery = makeRpcQuery(
   'cosmos-account-type',
   ['address'],
