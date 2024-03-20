@@ -2,7 +2,7 @@ import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate'
 import { fromUtf8, toUtf8 } from '@cosmjs/encoding'
 import { StargateClient } from '@cosmjs/stargate'
 import { cosmos } from '@dao-dao/types/protobuf'
-import retry from 'async-await-retry'
+import { getRpcForChainId, retry } from '@dao-dao/utils'
 
 import { Query, QueryState, QueryType } from '@/types'
 import { getChainForChainId } from '@/utils'
@@ -12,50 +12,24 @@ type RpcClient = Awaited<
 >['cosmos']
 
 const getStargateClient = (chainId: string) =>
-  retry(
-    () =>
-      StargateClient.connect(
-        // Validated chain existence.
-        `https://rpc.cosmos.directory/${getChainForChainId(chainId)!.chain_name}`
-      ),
-    undefined,
-    {
-      retriesMax: 3,
-      interval: 100,
-      exponential: true,
-    }
+  retry(5, (attempt) =>
+    StargateClient.connect(getRpcForChainId(chainId, attempt))
   )
 
 const getCosmWasmClient = (chainId: string) =>
-  retry(
-    () =>
-      CosmWasmClient.connect(
-        // Validated chain existence.
-        `https://rpc.cosmos.directory/${getChainForChainId(chainId)!.chain_name}`
-      ),
-    undefined,
-    {
-      retriesMax: 3,
-      interval: 100,
-      exponential: true,
-    }
+  retry(5, (attempt) =>
+    CosmWasmClient.connect(getRpcForChainId(chainId, attempt))
   )
 
 const getRpcClient = (chainId: string): Promise<RpcClient> =>
   retry(
-    async () =>
+    5,
+    async (attempt) =>
       (
         await cosmos.ClientFactory.createRPCQueryClient({
-          // Validated chain existence.
-          rpcEndpoint: `https://rpc.cosmos.directory/${getChainForChainId(chainId)!.chain_name}`,
+          rpcEndpoint: getRpcForChainId(chainId, attempt),
         })
-      ).cosmos,
-    undefined,
-    {
-      retriesMax: 3,
-      interval: 100,
-      exponential: true,
-    }
+      ).cosmos
   )
 
 const validateChainId = ({ chainId }: { chainId: string }) => {
@@ -182,12 +156,6 @@ export const cosmosContractStateKeyQuery = makeCosmWasmQuery(
 //   type: QueryType.Custom,
 //   name: 'cosmos-rpc',
 //   execute: async ({ chainId }) => {
-//     const chainName = getChainForChainId(chainId)?.chain_name
-
-//     const client = await StargateClient.connect(
-//       `https://rpc.cosmos.directory/${chainName}`
-//     )
-
 //     ...
 //   },
 //   ttl: 5,

@@ -1,6 +1,6 @@
 import { IBCInfo } from '@chain-registry/types'
 import { ibc } from '@dao-dao/types/protobuf'
-import retry from 'async-await-retry'
+import { getRpcForChainId, retry } from '@dao-dao/utils'
 
 import { Query, QueryType } from '@/types'
 import { getChainForChainId } from '@/utils'
@@ -136,9 +136,6 @@ export const icaRemoteAddressQuery: Query<
     return true
   },
   execute: async ({ address, srcChainId, destChainId }, query) => {
-    // Validated above.
-    const sourceChainName = getChainForChainId(srcChainId)!.chain_name
-
     const {
       body: {
         sourceChain: { connection_id },
@@ -150,17 +147,10 @@ export const icaRemoteAddressQuery: Query<
 
     const client: Awaited<
       ReturnType<typeof ibc.ClientFactory.createRPCQueryClient>
-    > = await retry(
-      () =>
-        ibc.ClientFactory.createRPCQueryClient({
-          rpcEndpoint: `https://rpc.cosmos.directory/${sourceChainName}`,
-        }),
-      undefined,
-      {
-        retriesMax: 3,
-        interval: 100,
-        exponential: true,
-      }
+    > = await retry(5, (attempt) =>
+      ibc.ClientFactory.createRPCQueryClient({
+        rpcEndpoint: getRpcForChainId(srcChainId, attempt),
+      })
     )
 
     return (
