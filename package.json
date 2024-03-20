@@ -42,11 +42,13 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
+    "@apollo/client": "^3.8.7",
     "@cosmjs/cosmwasm-stargate": "^0.32.3",
     "@cosmjs/encoding": "^0.32.3",
     "@cosmjs/proto-signing": "^0.32.3",
     "@cosmjs/stargate": "^0.32.3",
     "@cosmjs/tendermint-rpc": "^0.32.3",
+    "@dao-dao/state": "^2.4.0-rc.8",
     "@dao-dao/types": "^2.4.0-rc.8",
     "@dao-dao/utils": "^2.4.0-rc.8",
     "axios": "^1.6.7",

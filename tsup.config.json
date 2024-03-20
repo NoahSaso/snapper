@@ -8,5 +8,5 @@
   "splitting": false,
   "sourcemap": false,
   "clean": true,
-  "noExternal": ["@dao-dao/types", "@dao-dao/utils"]
+  "noExternal": ["@dao-dao/state", "@dao-dao/types", "@dao-dao/utils"]
 }

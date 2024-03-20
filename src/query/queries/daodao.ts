@@ -1,4 +1,7 @@
 import { Coin } from '@cosmjs/stargate'
+import { ChainId } from '@dao-dao/types'
+import { DecCoin } from '@dao-dao/types/protobuf/codegen/cosmos/base/v1beta1/coin'
+import { UnbondingDelegation } from '@dao-dao/types/protobuf/codegen/cosmos/staking/v1beta1/staking'
 import {
   ContractName,
   DAO_CORE_CONTRACT_NAMES,
@@ -24,11 +27,14 @@ import { coingeckoPriceHistoryQuery, coingeckoPriceQuery } from './coingecko'
 import { icaRemoteAddressQuery } from './ibc'
 import {
   cosmosBalancesQuery,
+  cosmosClaimableRewardsQuery,
   cosmosContractStateKeyQuery,
   cosmosIsIcaQuery,
   cosmosStakedBalanceQuery,
+  cosmosUnstakingBalanceQuery,
 } from './rpc'
 import { SkipAsset, skipAssetQuery } from './skip'
+import { stargazeUsdValueQuery } from './stargaze'
 
 /**
  * The address passed to the query to indicate that it should load tokens from
@@ -208,17 +214,24 @@ export const daodaoCommunityPoolHistoryQuery: Query<
     range !== TimeRange.Hour && range !== TimeRange.Day,
 }
 
+type AssetWithValue = {
+  asset: SkipAsset
+  unstakedBalance: string
+  stakedBalance: string
+  unstakingBalance: string
+  claimableRewards: string
+  price: number
+  value: number
+}
+
+type PortfolioValue = {
+  assets: AssetWithValue[]
+  stargazeNfts: number
+  totalValue: number
+}
+
 export const daodaoValueQuery: Query<
-  {
-    assets: {
-      asset: SkipAsset
-      unstakedBalance: string
-      stakedBalance: string
-      price: number
-      value: number
-    }[]
-    totalValue: number
-  },
+  PortfolioValue,
   {
     chainId: string
     address: string
@@ -237,6 +250,8 @@ export const daodaoValueQuery: Query<
     let communityPoolBody: Record<string, string | undefined>
     let nativeUnstakedBody: readonly Coin[]
     let nativeStakedBody: Coin | null
+    let nativeUnstakingBody: UnbondingDelegation[]
+    let nativeClaimableRewardsBody: DecCoin[]
     let cw20Body: {
       contractAddress: string
       balance: string
@@ -244,7 +259,7 @@ export const daodaoValueQuery: Query<
     try {
       const [
         { body: _communityPoolBody },
-        [{ body: _nativeUnstakedBody }, { body: _nativeStakedBody }],
+        nativeBodyPromises,
         { body: _cw20Body },
       ] = await Promise.all([
         isCommunityPool
@@ -253,7 +268,8 @@ export const daodaoValueQuery: Query<
             })
           : { body: {} as Record<string, string | undefined> },
         !isCommunityPool
-          ? Promise.all([
+          ? // Not all chains have staking, so allow these to fail.
+            Promise.allSettled([
               query(cosmosBalancesQuery, {
                 chainId,
                 address,
@@ -262,8 +278,16 @@ export const daodaoValueQuery: Query<
                 chainId,
                 address,
               }),
+              query(cosmosUnstakingBalanceQuery, {
+                chainId,
+                address,
+              }),
+              query(cosmosClaimableRewardsQuery, {
+                chainId,
+                address,
+              }),
             ])
-          : [{ body: [] }, { body: null }],
+          : null,
         query(daodaoCw20BalancesQuery, {
           chainId,
           address,
@@ -271,8 +295,22 @@ export const daodaoValueQuery: Query<
       ])
 
       communityPoolBody = _communityPoolBody
-      nativeUnstakedBody = _nativeUnstakedBody
-      nativeStakedBody = _nativeStakedBody
+      nativeUnstakedBody =
+        nativeBodyPromises?.[0].status === 'fulfilled'
+          ? nativeBodyPromises[0].value.body
+          : []
+      nativeStakedBody =
+        nativeBodyPromises?.[1].status === 'fulfilled'
+          ? nativeBodyPromises[1].value.body
+          : null
+      nativeUnstakingBody =
+        nativeBodyPromises?.[2].status === 'fulfilled'
+          ? nativeBodyPromises[2].value.body
+          : []
+      nativeClaimableRewardsBody =
+        nativeBodyPromises?.[3].status === 'fulfilled'
+          ? nativeBodyPromises[3].value.body
+          : []
       cw20Body = _cw20Body
     } catch (err) {
       if (err instanceof Error && err.message === 'Invalid chain ID') {
@@ -288,6 +326,7 @@ export const daodaoValueQuery: Query<
       ),
       ...[
         ...nativeUnstakedBody,
+        ...nativeClaimableRewardsBody,
         ...(nativeStakedBody ? [nativeStakedBody] : []),
       ].flatMap(({ denom }) =>
         !tokenFilter || tokenFilter.includes(denom) ? denom : []
@@ -320,39 +359,77 @@ export const daodaoValueQuery: Query<
             id: asset.coingecko_id,
           })
 
-          const unstakedBalance = cw20
-            ? cw20Body.find(({ contractAddress }) => contractAddress === denom)
-                ?.balance
-            : isCommunityPool
-              ? communityPoolBody[denom]
-              : nativeUnstakedBody.find((coin) => coin.denom === denom)?.amount
+          const unstakedBalance =
+            (cw20
+              ? cw20Body.find(
+                  ({ contractAddress }) => contractAddress === denom
+                )?.balance
+              : isCommunityPool
+                ? communityPoolBody[denom]
+                : nativeUnstakedBody.find((coin) => coin.denom === denom)
+                    ?.amount) || '0'
           const stakedBalance =
             !cw20 && !isCommunityPool && denom === nativeStakedBody?.denom
               ? nativeStakedBody.amount
               : '0'
+          const unstakingBalance =
+            !cw20 && !isCommunityPool && denom === nativeStakedBody?.denom
+              ? nativeUnstakingBody
+                  .reduce(
+                    (acc, { entries }) =>
+                      acc +
+                      entries.reduce(
+                        (acc2, { balance }) => acc2 + BigInt(balance),
+                        0n
+                      ),
+                    0n
+                  )
+                  .toString()
+              : '0'
+          const claimableRewards =
+            (!cw20 &&
+              !isCommunityPool &&
+              nativeClaimableRewardsBody.find((coin) => coin.denom === denom)
+                ?.amount) ||
+            '0'
 
-          return unstakedBalance
-            ? {
-                asset,
-                unstakedBalance,
-                stakedBalance,
-                price,
-                value:
-                  price *
-                  ((Number(unstakedBalance) + Number(stakedBalance)) /
-                    Math.pow(10, asset.decimals)),
-              }
-            : undefined
+          return {
+            asset,
+            unstakedBalance,
+            stakedBalance,
+            unstakingBalance,
+            claimableRewards,
+            price,
+            value:
+              price *
+              ((Number(unstakedBalance) +
+                Number(stakedBalance) +
+                Number(unstakingBalance) +
+                Number(claimableRewards)) /
+                Math.pow(10, asset.decimals)),
+          }
         })
       )
     )
       .flatMap((data) => data || [])
       .sort((a, b) => b.value - a.value)
 
-    const totalValue = assets.reduce((acc, { value }) => acc + (value || 0), 0)
+    const stargazeNfts =
+      chainId === ChainId.StargazeMainnet || chainId === ChainId.StargazeTestnet
+        ? (
+            await query(stargazeUsdValueQuery, {
+              chainId,
+              address,
+            })
+          ).body
+        : 0
+
+    const assetValue = assets.reduce((acc, { value }) => acc + (value || 0), 0)
+    const totalValue = assetValue + stargazeNfts
 
     return {
       assets,
+      stargazeNfts,
       totalValue,
     }
   },
@@ -589,21 +666,15 @@ export const daodaoValueHistoryQuery: Query<
   revalidate: ({ range }) => range !== TimeRange.Hour,
 }
 
+type AccountWithPortfolioValue = {
+  // Used in daodaoTvlQuery.
+  type?: string
+  chainId: string
+  address: string
+} & PortfolioValue
+
 export type ManyValueResponse = {
-  accounts: {
-    // Used in daodaoTvlQuery.
-    type?: string
-    chainId: string
-    address: string
-    assets: {
-      asset: SkipAsset
-      unstakedBalance: string
-      stakedBalance: string
-      price: number
-      value: number
-    }[]
-    totalValue: number
-  }[]
+  accounts: AccountWithPortfolioValue[]
   assets: {
     origin: {
       chainId: string
@@ -648,34 +719,37 @@ export const daodaoManyValueQuery: Query<
       ) || {}
 
     const accounts = await Promise.all(
-      _accounts.split(',').map(async (account) => {
-        const [chainId, address] = account.split(':')
-        try {
-          return {
-            chainId,
-            address,
-            ...(
-              await query(daodaoValueQuery, {
-                chainId,
-                address,
-                tokenFilter: tokenFilter[chainId]?.join(','),
-              })
-            ).body,
-          }
-        } catch (err) {
-          // If the account is on a chain that is unsupported, ignore.
-          if (err instanceof Error && err.message.includes('Unsupported')) {
+      _accounts
+        .split(',')
+        .map(async (account): Promise<AccountWithPortfolioValue> => {
+          const [chainId, address] = account.split(':')
+          try {
             return {
               chainId,
               address,
-              assets: [],
-              totalValue: 0,
+              ...(
+                await query(daodaoValueQuery, {
+                  chainId,
+                  address,
+                  tokenFilter: tokenFilter[chainId]?.join(','),
+                })
+              ).body,
             }
-          }
+          } catch (err) {
+            // If the account is on a chain that is unsupported, ignore.
+            if (err instanceof Error && err.message.includes('Unsupported')) {
+              return {
+                chainId,
+                address,
+                assets: [],
+                stargazeNfts: 0,
+                totalValue: 0,
+              }
+            }
 
-          throw err
-        }
-      })
+            throw err
+          }
+        })
     )
 
     if (!accounts.length) {

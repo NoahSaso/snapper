@@ -2,7 +2,7 @@ import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate'
 import { fromUtf8, toUtf8 } from '@cosmjs/encoding'
 import { StargateClient } from '@cosmjs/stargate'
 import { cosmos } from '@dao-dao/types/protobuf'
-import { getRpcForChainId, retry } from '@dao-dao/utils'
+import { getAllRpcResponse, getRpcForChainId, retry } from '@dao-dao/utils'
 
 import { Query, QueryState, QueryType } from '@/types'
 import { getChainForChainId } from '@/utils'
@@ -113,6 +113,31 @@ export const cosmosStakedBalanceQuery = makeStargateQuery(
   'cosmos-staked-balance',
   ['address'],
   (client, { address }) => client.getBalanceStaked(address)
+)
+
+export const cosmosUnstakingBalanceQuery = makeRpcQuery(
+  'cosmos-unstaking-balance',
+  ['address'],
+  (client, { address }) =>
+    getAllRpcResponse(
+      client.staking.v1beta1.delegatorUnbondingDelegations,
+      {
+        delegatorAddr: address,
+        pagination: undefined,
+      },
+      'unbondingResponses'
+    )
+)
+
+export const cosmosClaimableRewardsQuery = makeRpcQuery(
+  'cosmos-claimable-rewards',
+  ['address'],
+  async (client, { address }) =>
+    (
+      await client.distribution.v1beta1.delegationTotalRewards({
+        delegatorAddress: address,
+      })
+    ).total
 )
 
 export const cosmosAccountTypeQuery = makeRpcQuery(
