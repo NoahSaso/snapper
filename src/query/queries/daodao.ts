@@ -1298,8 +1298,8 @@ export const daodaoTvlQuery: Query<
 
     return value
   },
-  // Update once per hour.
-  ttl: 60 * 60,
+  // Update once per 5 minutes.
+  ttl: 5 * 60,
   revalidate: false,
 }
 
