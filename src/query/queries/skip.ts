@@ -83,7 +83,10 @@ export const skipAssetsQuery: Query<
   name: 'skip-assets',
   parameters: ['chainId'],
   url: ({ chainId }) =>
-    SKIP_API_BASE + '/v1/fungible/assets?chainId=' + chainId,
+    SKIP_API_BASE +
+    '/v1/fungible/assets?chainId=' +
+    chainId +
+    '&include_cw20_assets=true',
   transform: (body: any, { chainId }) =>
     body?.chain_to_assets_map?.[chainId]?.assets || [],
   // Cache for a day.
