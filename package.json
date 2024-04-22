@@ -21,6 +21,7 @@
   "license": "AGPL-3.0-only",
   "devDependencies": {
     "@chain-registry/types": "^0.18.1",
+    "@swc/core": "^1.4.16",
     "@types/busboy": "^1.5.3",
     "@types/cors": "^2.8.17",
     "@types/lodash.uniq": "^4.5.9",
