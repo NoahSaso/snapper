@@ -108,7 +108,6 @@ Start redis server:
 redis-server
 ```
 
-
 Run the node server:
 
 ```sh
