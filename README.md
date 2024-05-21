@@ -114,7 +114,6 @@ into new queries.
 ## Usage
 
 Start redis server:
-
 ```sh
 redis-server
 ```
@@ -123,6 +122,9 @@ Run the node server:
 
 ```sh
 npm run serve
+
+### For hot reloading 
+npm run serve:dev
 ```
 
 Run the revalidation processor:
