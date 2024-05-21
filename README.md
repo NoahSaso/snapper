@@ -103,7 +103,12 @@ into new queries.
 
 ## Usage
 
-Run the server:
+Start redis server:
+```sh
+redis-server
+```
+
+Run the node server:
 
 ```sh
 npm run serve
@@ -112,7 +117,7 @@ npm run serve
 Perform a query:
 
 ```sh
-curl -X GET http://localhost:3000/q/query_name?parameter=value
+curl -X GET 'http://localhost:3000/q/query_name?parameter=value'
 ```
 
 Run the revalidator:
