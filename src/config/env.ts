@@ -18,6 +18,11 @@ export const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000
 export const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379'
 
 /**
+ * Redis Password
+ */
+export const REDIS_API_KEY = process.env.REDIS_API_KEY
+
+/**
  * Allowed origins for CORS, comma-separated. If empty, all origins are allowed.
  * Interpreted as regex.
  */
