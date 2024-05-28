@@ -36,8 +36,8 @@ const revalidate = async () => {
 
   try {
     const almostExpiredQueries = (await findAlmostExpiredQueries(ratio)).filter(
-      ({ query: { revalidate = true }, parameters }) =>
-        typeof revalidate === 'function' ? revalidate(parameters) : revalidate
+      ({ query: { revalidate = true }, params }) =>
+        typeof revalidate === 'function' ? revalidate(params) : revalidate
     )
 
     if (almostExpiredQueries.length > 0) {
@@ -48,26 +48,24 @@ const revalidate = async () => {
       // Batch revalidate queries.
       for (let i = 0; i < almostExpiredQueries.length; i += batch) {
         await Promise.allSettled(
-          almostExpiredQueries
-            .slice(i, i + batch)
-            .map(({ query, parameters }) =>
-              // Ignore errors. Will retry on next revalidation.
-              fetchQuery(query, parameters, true).catch((error) =>
-                console.error(
-                  `error revalidating query "${query.name}" with parameters ${JSON.stringify(
-                    parameters
-                  )}`,
-                  error
-                )
+          almostExpiredQueries.slice(i, i + batch).map(({ query, params }) =>
+            // Ignore errors. Will retry on next revalidation.
+            fetchQuery(query, params, true).catch((error) =>
+              console.error(
+                `error revalidating query "${query.name}" with parameters ${JSON.stringify(
+                  params
+                )}`,
+                error
               )
             )
+          )
         )
       }
 
       console.log(`[${new Date().toISOString()}] Revalidation complete.`)
     }
   } catch (err) {
-    console.error(`error revalidating queries`, err)
+    console.error('error revalidating queries', err)
   } finally {
     // Revalidate in the next interval.
     timeout = setTimeout(revalidate, intervalSeconds * 1000)

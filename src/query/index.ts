@@ -2,6 +2,8 @@ import axios, { AxiosError } from 'axios'
 import stringify from 'json-stringify-deterministic'
 
 import { redis } from '@/config'
+import { QueueName, getBullQueue } from '@/queues'
+import { RevalidateProcessorPayload } from '@/queues/processors'
 import { Query, QueryState, QueryType } from '@/types'
 
 import { queries } from './queries'
@@ -30,6 +32,53 @@ export const getQueryState = async <
 }
 
 /**
+ * Validate parameters for a query and return only parameters the query accepts.
+ *
+ * This prevents people from storing arbitrary data in our cache or refetching
+ * queries based on irrelevant parameters.
+ */
+export const validateQueryParams = async <
+  Parameters extends Record<string, string> = Record<string, string>,
+>(
+  query: Query<unknown, Parameters>,
+  params: Parameters
+): Promise<Parameters> => {
+  // Extract only the parameters the query accepts.
+  const acceptedParams = [
+    ...(query.parameters || []),
+    ...(query.optionalParameters || []),
+  ].reduce(
+    (acc, param) => ({
+      ...acc,
+      ...(param in params
+        ? {
+            [param]: params[param],
+          }
+        : {}),
+    }),
+    {} as Parameters
+  )
+
+  if (query.parameters?.length) {
+    const missingParams = query.parameters.filter(
+      (param) => !acceptedParams[param]
+    )
+    if (missingParams.length) {
+      throw new Error(`missing parameters: ${missingParams.join(', ')}`)
+    }
+  }
+
+  if (query.validate) {
+    const valid = await query.validate?.(acceptedParams)
+    if (!valid) {
+      throw new Error('invalid parameters')
+    }
+  }
+
+  return acceptedParams
+}
+
+/**
  * Fetch the query (from cache if available, or executing it otherwise), store
  * it in the cache, and return the state.
  */
@@ -37,29 +86,89 @@ export const fetchQuery = async <
   Body = unknown,
   Parameters extends Record<string, string> = Record<string, string>,
 >(
+  /**
+   * The query to fetch.
+   */
   query: Query<Body, Parameters>,
+  /**
+   * Parameters to validate (unless validation disabled) and pass to the query.
+   */
   params: Parameters,
-  // Whether or not to force fetch the query even if it's already in the cache.
-  // This may be used to revalidate the cache before it expires.
-  forceFetch = false
+  /**
+   * Whether or not to force fetch the query even if it's already in the cache.
+   * This may be used to revalidate the cache before it expires.
+   *
+   * Defaults to fase.
+   */
+  forceFetch = false,
+  /**
+   * Whether or not to ignore parameter validation.
+   *
+   * Defaults to false.
+   */
+  noValidate = false
 ): Promise<{
   data: QueryState<Body>
   /**
    * Whether or not the query was fetched from the cache.
    */
   cached: boolean
+  /**
+   * Whether or not the cached query is stale. This can only be true if `cached`
+   * is also true.
+   */
+  stale: boolean
 }> => {
+  // Validate query parameters.
+  params = noValidate ? params : await validateQueryParams(query, params)
+
   if (!forceFetch) {
     const currentQueryState = await getQueryState(query, params)
     if (currentQueryState) {
+      const stale =
+        !!currentQueryState.staleAt && currentQueryState.staleAt <= Date.now()
+
+      // If cached value is stale, queue background job to revalidate the query.
+      //
+      // Create an ID unique to the stale query to avoid overlapping jobs. If
+      // multiple requests come in for the same stale query before the job is
+      // complete, we don't want to revalidate multiple times. Adding a job to
+      // the queue with an ID that already exist is a no-op.
+      //
+      // See https://docs.bullmq.io/guide/jobs/job-ids
+      if (stale) {
+        const id = `${getQueryKey(query, params)
+          // Remove query prefix.
+          .slice(QUERY_PREFIX.length)
+          // Replace question mark with underscore so it can be clicked in the
+          // Bull Board. The question mark doesn't get escaped so it doesn't
+          // open the correct URL.
+          .replace('?', '_')}_${currentQueryState.fetchedAt}`
+
+        await getBullQueue<RevalidateProcessorPayload>(
+          QueueName.Revalidate
+        ).add(
+          id,
+          {
+            query: query.name,
+            params,
+          },
+          {
+            jobId: id,
+          }
+        )
+      }
+
       return {
         data: currentQueryState,
         cached: true,
+        stale,
       }
     }
   }
 
   const ttl = typeof query.ttl === 'function' ? query.ttl(params) : query.ttl
+  const fetchedAt = Date.now()
 
   let queryState: QueryState<Body>
   if (query.type === QueryType.Url) {
@@ -99,7 +208,8 @@ export const fetchQuery = async <
       status: response.status,
       statusText: response.statusText,
       body,
-      fetchedAt: Date.now(),
+      fetchedAt,
+      staleAt: ttl > 0 ? fetchedAt + ttl * 1000 : 0,
     }
   } else if (query.type === QueryType.Custom) {
     const body = await query.execute(
@@ -108,32 +218,28 @@ export const fetchQuery = async <
     )
     queryState = {
       body,
-      fetchedAt: Date.now(),
+      fetchedAt,
+      staleAt: ttl > 0 ? fetchedAt + ttl * 1000 : 0,
     }
   } else {
     throw new Error(`invalid query type: ${query['type']}`)
   }
 
-  if (ttl) {
-    await redis.set(
-      getQueryKey(query, params),
-      JSON.stringify(queryState),
-      // Expire in <TTL> seconds.
-      'EX',
-      ttl
-    )
-  } else {
-    await redis.set(getQueryKey(query, params), JSON.stringify(queryState))
-  }
+  // Save query without an expiration, since we cache with
+  // stale-while-revalidate. We will manually examine `staleAt` when this is
+  // queried in the future to determine whether or not to kick off a background
+  // process to update the cache.
+  await redis.set(getQueryKey(query, params), JSON.stringify(queryState))
 
   return {
     data: queryState,
     cached: false,
+    stale: false,
   }
 }
 
 /**
- * Get query storage key given the query and its parameters.
+ * Get query storage key given the query and its accepted parameters.
  */
 export const getQueryKey = (
   query: Query<any, any>,
@@ -158,13 +264,16 @@ export const getQueryKey = (
  */
 export const parseQueryKey = (
   key: string
-): { name: string; parameters: Record<string, string> } => {
+): {
+  name: string
+  params: Record<string, string>
+} => {
   const [name, params] = key
     .replace(new RegExp('^' + QUERY_PREFIX), '')
     .split('?')
   return {
     name,
-    parameters: params ? JSON.parse(params) : {},
+    params: params ? JSON.parse(params) : {},
   }
 }
 
@@ -176,19 +285,20 @@ export const parseQueryKey = (
  */
 export const findAlmostExpiredQueries = async (remainingTtlRatio = 0.25) => {
   const queryKeys = await redis.keys(QUERY_PREFIX + '*')
+  // TODO: don't use redis ttl for this
   const queryKeyTtls = await Promise.all(queryKeys.map((key) => redis.ttl(key)))
 
   const queries = (
     await Promise.all(
       queryKeys.map(async (key) => {
-        const { name, parameters } = parseQueryKey(key)
+        const { name, params } = parseQueryKey(key)
         const query = getQuery(name)
-        const state = query && (await getQueryState(query, parameters))
+        const state = query && (await getQueryState(query, params))
         return (
           query &&
           state && {
             query,
-            parameters,
+            params,
             state,
           }
         )

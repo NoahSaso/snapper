@@ -122,4 +122,14 @@ export type QueryState<Body = unknown> = {
    * The response time (in unix ms since epoch) for the query.
    */
   fetchedAt: number
+  /**
+   * The time (in unix ms since epoch) at which the query is considered stale
+   * and should be revalidated. This is when it was fetched combined with the
+   * TTL set for the query. If the TTL is disabled, meaning it shouldn't cache,
+   * this will be undefined.
+   *
+   * Allowing undefined also makes this backwards compatible to before
+   * stale-while-revalidate was used and must-revalidate was used instead.
+   */
+  staleAt?: number
 }

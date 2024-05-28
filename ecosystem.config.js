@@ -7,9 +7,15 @@ module.exports = {
       wait_ready: true,
     },
     {
-      name: 'revalidator',
-      script: 'dist/scripts/revalidate.js',
+      name: 'workers',
+      script: 'dist/queues/process.js',
       wait_ready: true,
+      listen_timeout: 30000,
     },
+    // {
+    //   name: 'revalidator',
+    //   script: 'dist/scripts/revalidate.js',
+    //   wait_ready: true,
+    // },
   ],
 }
