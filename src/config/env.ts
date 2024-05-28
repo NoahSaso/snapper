@@ -27,3 +27,9 @@ export const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(',') || []
  * CoinGecko API Key.
  */
 export const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY || ''
+
+/**
+ * Admin dashboard password.
+ */
+export const ADMIN_DASHBOARD_PASSWORD =
+  process.env.ADMIN_DASHBOARD_PASSWORD || 'admin'

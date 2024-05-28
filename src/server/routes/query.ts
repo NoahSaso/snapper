@@ -1,76 +1,81 @@
-import { MiddlewareHandler } from 'hyper-express'
+import { FastifyReply, FastifyRequest } from 'fastify'
 
-import { redis } from '@/config'
-import { fetchQuery, getQuery, getQueryKey } from '@/query'
+import { fetchQuery, getQuery, validateQueryParams } from '@/query'
 
-export const query: MiddlewareHandler = async (req, res) => {
+export const query = async (
+  req: FastifyRequest<{
+    Params: {
+      query: string
+    }
+  }>,
+  reply: FastifyReply
+) => {
+  const start = Date.now()
   const logPrefix = `${req.method} ${req.url}`
 
-  const queryName = req.path_parameters.query
+  const queryName = 'query' in req.params ? req.params.query : 'undefined'
   const query = getQuery(queryName)
   if (!query) {
     console.log(`${logPrefix} - 404`)
-    res.status(404).send(`query "${queryName}" not found`)
+    reply.status(404).send(`query "${queryName}" not found`)
     return
   }
 
-  // Validate required parameters.
-  if (query.parameters?.length) {
-    const missingParams = query.parameters.filter(
-      (param) => !req.query_parameters[param]
-    )
-    if (missingParams.length) {
-      const error = `missing parameters: ${missingParams.join(', ')}`
-      console.log(`${logPrefix} - 400 ${error}`)
-      res.status(400).send(error)
-      return
-    }
-
-    if (query.validate) {
-      try {
-        const valid = await query.validate?.(req.query_parameters)
-        if (!valid) {
-          throw new Error('invalid parameters')
-        }
-      } catch (err) {
-        const error =
-          err instanceof Error ? err.message : `unknown error: ${err}`
-        console.log(`${logPrefix} - 400 ${error}`)
-        res.status(400).send(error)
-        return
-      }
-    }
+  // Validate query parameters.
+  let params
+  try {
+    params = await validateQueryParams(query, req.query)
+  } catch (err) {
+    const error = err instanceof Error ? err.message : `${err}`
+    console.log(`${logPrefix} - 400 ${error}`)
+    reply.status(400).send(error)
+    return
   }
 
   let queryState
   try {
-    queryState = await fetchQuery(query, req.query_parameters)
+    queryState = await fetchQuery(
+      query,
+      params,
+      false,
+      // Params validated above; no need to validate again.
+      true
+    )
   } catch (err) {
     console.error(`${logPrefix} - 500`, err)
-    res
+    reply
       .status(500)
       .send(err instanceof Error ? err.message : `unknown error: ${err}`)
     return
   }
 
-  // Set cache headers.
-  const ttl = await redis.ttl(getQueryKey(query, req.query_parameters))
-  if (ttl > 0) {
-    res.set('cache-control', `max-age=${ttl}, public, must-revalidate`)
+  // Set cache headers if enabled.
+  if (!!queryState.data.staleAt) {
+    let maxAge = Math.round((queryState.data.staleAt - Date.now()) / 1000)
+    // Set stale floor at 5 seconds. This ensures that if it's already stale
+    // (negative), clients know to revalidate soon.
+    if (maxAge < 5) {
+      maxAge = 5
+    }
+
+    reply.header(
+      'cache-control',
+      `max-age=${BigInt(maxAge).toString()}, public, stale-while-revalidate`
+    )
   }
 
-  const elapsed = Date.now() - req.locals.startTime
+  const elapsed = Date.now() - start
 
   const { body } = queryState.data
   if (body === undefined) {
     console.log(
-      `${logPrefix} - 204 ${queryState.cached ? 'cached' : 'not cached'} - ${elapsed.toLocaleString()}ms`
+      `${logPrefix} - 204 - ${queryState.cached ? 'cached' : 'not cached'} - ${queryState.stale ? 'stale' : 'fresh'} - ${elapsed.toLocaleString()}ms`
     )
-    res.status(204).send()
+    reply.status(204).send()
   } else {
     console.log(
-      `${logPrefix} - 200 ${queryState.cached ? 'cached' : 'not cached'} - ${elapsed.toLocaleString()}ms`
+      `${logPrefix} - 200 - ${queryState.cached ? 'cached' : 'not cached'} - ${queryState.stale ? 'stale' : 'fresh'} - ${elapsed.toLocaleString()}ms`
     )
-    res.status(200).json(body)
+    reply.status(200).header('content-type', 'application/json').send(body)
   }
 }
