@@ -21,8 +21,6 @@ export const whiteWhalePoolsQuery: Query<WhiteWhalePool[]> = {
   url: 'https://www.api-white-whale.enigma-validator.com/summary/migaloo/all/current',
   // Cache price for 1 hour.
   ttl: 60 * 60,
-  // No need to auto-revalidate since this query is quick.
-  revalidate: false,
 }
 
 export const whiteWhalePriceQuery: Query<number, { symbol: string }> = {
@@ -51,6 +49,4 @@ export const whiteWhalePriceQuery: Query<number, { symbol: string }> = {
   },
   // Cache for 5 minutes.
   ttl: 5 * 60,
-  // No need to auto-revalidate since this query is quick.
-  revalidate: false,
 }

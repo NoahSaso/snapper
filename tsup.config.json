@@ -2,7 +2,6 @@
   "entry": [
     "src/server/app.ts",
     "src/queues/process.ts",
-    "src/scripts/revalidate.ts",
     "src/scripts/flushMatching.ts",
     "src/scripts/flushQuery.ts"
   ],

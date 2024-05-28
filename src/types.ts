@@ -91,11 +91,6 @@ export type Query<
    * Defaults to 60. Set to 0 to disable.
    */
   ttl: number | ((params: Parameters) => number)
-  /**
-   * Whether or not to automatically revalidate the query when it expires, or a
-   * function to get it. Defaults to true.
-   */
-  revalidate?: boolean | ((params: Parameters) => boolean)
 } & (
   | ({
       type: QueryType.Url

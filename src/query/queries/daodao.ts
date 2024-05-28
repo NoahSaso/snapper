@@ -86,9 +86,6 @@ export const daodaoBankBalancesHistoryQuery: Query<
       : range === TimeRange.Day
         ? 60 * 60
         : 24 * 60 * 60,
-  // No need to auto-revalidate for short ranges.
-  revalidate: ({ range }) =>
-    range !== TimeRange.Hour && range !== TimeRange.Day,
 }
 
 export const daodaoCw20BalancesQuery: Query<
@@ -105,8 +102,6 @@ export const daodaoCw20BalancesQuery: Query<
   url: ({ chainId, address }) =>
     `https://indexer.daodao.zone/${chainId}/wallet/${address}/tokens/list`,
   ttl: 60,
-  // No need to auto-revalidate since this query is quick.
-  revalidate: false,
 }
 
 export const daodaoCw20BalancesHistoryQuery: Query<
@@ -150,9 +145,6 @@ export const daodaoCw20BalancesHistoryQuery: Query<
       : range === TimeRange.Day
         ? 60 * 60
         : 24 * 60 * 60,
-  // No need to auto-revalidate for short ranges.
-  revalidate: ({ range }) =>
-    range !== TimeRange.Hour && range !== TimeRange.Day,
 }
 
 export const daodaoCommunityPoolQuery: Query<
@@ -168,8 +160,6 @@ export const daodaoCommunityPoolQuery: Query<
   url: ({ chainId }) =>
     `https://indexer.daodao.zone/${chainId}/generic/_/communityPool/balances`,
   ttl: 60,
-  // No need to auto-revalidate since this query is quick.
-  revalidate: false,
 }
 
 export const daodaoCommunityPoolHistoryQuery: Query<
@@ -212,9 +202,6 @@ export const daodaoCommunityPoolHistoryQuery: Query<
       : range === TimeRange.Day
         ? 60 * 60
         : 24 * 60 * 60,
-  // No need to auto-revalidate for short ranges.
-  revalidate: ({ range }) =>
-    range !== TimeRange.Hour && range !== TimeRange.Day,
 }
 
 export const daodaoPriceQuery: Query<
@@ -270,7 +257,6 @@ export const daodaoPriceQuery: Query<
   },
   // Cache for 5 minutes.
   ttl: 5 * 60,
-  revalidate: false,
 }
 
 type AssetWithValue = {
@@ -504,8 +490,6 @@ export const daodaoValueQuery: Query<
     }
   },
   ttl: 60,
-  // No need to auto-revalidate since this query is quick.
-  revalidate: false,
 }
 
 export const daodaoValueHistoryQuery: Query<
@@ -732,8 +716,6 @@ export const daodaoValueHistoryQuery: Query<
       : range === TimeRange.Day
         ? 60 * 60
         : 24 * 60 * 60,
-  // No need to auto-revalidate for short ranges.
-  revalidate: ({ range }) => range !== TimeRange.Hour,
 }
 
 type AccountWithPortfolioValue = {
@@ -870,8 +852,6 @@ export const daodaoManyValueQuery: Query<
     }
   },
   ttl: 60,
-  // No need to auto-revalidate since this query is quick.
-  revalidate: false,
 }
 
 export const daodaoManyValueHistoryQuery: Query<
@@ -1053,8 +1033,6 @@ export const daodaoManyValueHistoryQuery: Query<
       : range === TimeRange.Day
         ? 60 * 60
         : 24 * 60 * 60,
-  // No need to auto-revalidate for short ranges.
-  revalidate: ({ range }) => range !== TimeRange.Hour,
 }
 
 export const daodaoListItemsQuery: Query<
@@ -1071,8 +1049,6 @@ export const daodaoListItemsQuery: Query<
   url: ({ chainId, address }) =>
     `https://indexer.daodao.zone/${chainId}/contract/${address}/daoCore/listItems`,
   ttl: 30,
-  // No need to auto-revalidate since this query is quick.
-  revalidate: false,
 }
 
 export const daodaoListItemsWithPrefixQuery: Query<
@@ -1092,8 +1068,6 @@ export const daodaoListItemsWithPrefixQuery: Query<
       .filter(([key]) => key.startsWith(prefix))
       .map(([key, value]) => [key.slice(prefix.length), value]),
   ttl: 30,
-  // No need to auto-revalidate since this query is quick.
-  revalidate: false,
 }
 
 export const daodaoIcasQuery: Query<
@@ -1132,8 +1106,6 @@ export const daodaoIcasQuery: Query<
       )
     ).flatMap((p) => (p.status === 'fulfilled' ? p.value : [])),
   ttl: 30,
-  // No need to auto-revalidate since this query is quick.
-  revalidate: false,
 }
 
 export const daodaoPolytoneAccountsQuery: Query<
@@ -1164,8 +1136,6 @@ export const daodaoPolytoneAccountsQuery: Query<
       address,
     })),
   ttl: 30,
-  // No need to auto-revalidate since this query is quick.
-  revalidate: false,
 }
 
 export const daodaoAccountsQuery: Query<
@@ -1261,8 +1231,6 @@ export const daodaoAccountsQuery: Query<
     ]
   },
   ttl: 30,
-  // No need to auto-revalidate since this query is quick.
-  revalidate: false,
 }
 
 export const daodaoTvlQuery: Query<
@@ -1300,7 +1268,6 @@ export const daodaoTvlQuery: Query<
   },
   // Update once per 5 minutes.
   ttl: 5 * 60,
-  revalidate: false,
 }
 
 export const daodaoIndexerContractQuery: Query<
@@ -1327,7 +1294,6 @@ export const daodaoIndexerContractQuery: Query<
     ).toString()}`,
   // Once every 5 seconds, since this may change at every chain block.
   ttl: 5,
-  revalidate: false,
 }
 
 export const daodaoIsContractQuery: Query<
@@ -1413,7 +1379,6 @@ export const daodaoIsContractQuery: Query<
   },
   // Update once per week.
   ttl: 7 * 24 * 60 * 60,
-  revalidate: true,
 }
 
 export const daodaoIsDaoQuery: Query<
@@ -1436,7 +1401,6 @@ export const daodaoIsDaoQuery: Query<
     ).body,
   // Update once per week. Really this should never change...
   ttl: 7 * 24 * 60 * 60,
-  revalidate: true,
 }
 
 export const daodaoIsPolytoneProxyQuery: Query<
@@ -1459,7 +1423,6 @@ export const daodaoIsPolytoneProxyQuery: Query<
     ).body,
   // Update once per week. Really this should never change...
   ttl: 7 * 24 * 60 * 60,
-  revalidate: true,
 }
 
 /**
@@ -1521,5 +1484,4 @@ export const daodaoReverseLookupPolytoneProxyQuery: Query<
   },
   // Update once per week. Really this should never change...
   ttl: 7 * 24 * 60 * 60,
-  revalidate: true,
 }

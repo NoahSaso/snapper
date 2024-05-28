@@ -21,8 +21,6 @@ export const ibcChainRegistryQuery: Query<
     `https://raw.githubusercontent.com/cosmos/chain-registry/master/_IBC/${a}-${b}.json`,
   // Cache for 24 hours.
   ttl: 24 * 60 * 60,
-  // No need to auto-revalidate since this query is quick.
-  revalidate: false,
 }
 
 export const ibcTransferInfoQuery: Query<
@@ -111,8 +109,6 @@ export const ibcTransferInfoQuery: Query<
   },
   // Cache for 24 hours.
   ttl: 24 * 60 * 60,
-  // No need to auto-revalidate since this query is quick.
-  revalidate: false,
 }
 
 export const icaRemoteAddressQuery: Query<
@@ -164,6 +160,4 @@ export const icaRemoteAddressQuery: Query<
   },
   // Cache for 1 hour.
   ttl: 24 * 60,
-  // No need to auto-revalidate since this query is quick.
-  revalidate: false,
 }

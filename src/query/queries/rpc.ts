@@ -54,7 +54,6 @@ const makeStargateQuery = <
   execute: async (parameters) =>
     execute(await getStargateClient(parameters.chainId), parameters),
   ttl: 5,
-  revalidate: false,
 })
 
 const makeCosmWasmQuery = <
@@ -72,7 +71,6 @@ const makeCosmWasmQuery = <
   execute: async (parameters) =>
     execute(await getCosmWasmClient(parameters.chainId), parameters),
   ttl: 5,
-  revalidate: false,
 })
 
 const makeRpcQuery = <
@@ -100,7 +98,6 @@ const makeRpcQuery = <
   execute: async (parameters, fetchQuery) =>
     execute(await getRpcClient(parameters.chainId), parameters, fetchQuery),
   ttl: 5,
-  revalidate: false,
 })
 
 export const cosmosBalancesQuery = makeStargateQuery(
@@ -170,7 +167,6 @@ export const cosmosIsIcaQuery: Query<
     ).body === '/ibc.applications.interchain_accounts.v1.InterchainAccount',
   // Update once per month. Really this should never change...
   ttl: 30 * 24 * 60 * 60,
-  revalidate: true,
 }
 
 export const cosmosContractStateKeyQuery = makeCosmWasmQuery(
@@ -190,5 +186,4 @@ export const cosmosContractStateKeyQuery = makeCosmWasmQuery(
 //     ...
 //   },
 //   ttl: 5,
-//   revalidate: false,
 // }

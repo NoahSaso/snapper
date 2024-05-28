@@ -29,8 +29,6 @@ export const astroportPriceQuery: Query<
   transform: (body) => (body as AstroportToken).priceUSD,
   // Cache price for 5 minutes.
   ttl: 5 * 60,
-  // No need to auto-revalidate since this query is quick.
-  revalidate: false,
 }
 
 /**
@@ -69,6 +67,4 @@ export const astroportResolvedPriceQuery: Query<
   },
   // Cache price for 5 minutes.
   ttl: 5 * 60,
-  // No need to auto-revalidate since this query is quick.
-  revalidate: false,
 }

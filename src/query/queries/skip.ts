@@ -52,8 +52,6 @@ export const skipChainsQuery: Query<SkipChain[]> = {
   transform: (body: any) => body?.chains || [],
   // Cache for a day.
   ttl: 24 * 60 * 60,
-  // No need to auto-revalidate since this query is quick.
-  revalidate: false,
 }
 
 export const skipChainQuery: Query<SkipChain | undefined, { chainId: string }> =
@@ -69,8 +67,6 @@ export const skipChainQuery: Query<SkipChain | undefined, { chainId: string }> =
     },
     // Cache for a day.
     ttl: 24 * 60 * 60,
-    // No need to auto-revalidate since this query is quick.
-    revalidate: false,
   }
 
 export const skipAssetsQuery: Query<
@@ -91,8 +87,6 @@ export const skipAssetsQuery: Query<
     body?.chain_to_assets_map?.[chainId]?.assets || [],
   // Cache for a day.
   ttl: 24 * 60 * 60,
-  // No need to auto-revalidate since this query is quick.
-  revalidate: false,
 }
 
 export const skipAssetQuery: Query<
@@ -119,8 +113,6 @@ export const skipAssetQuery: Query<
   },
   // Cache for a day.
   ttl: 24 * 60 * 60,
-  // No need to auto-revalidate since this query is quick.
-  revalidate: false,
 }
 
 export const skipRecommendedAssetsQuery: Query<
@@ -152,8 +144,6 @@ export const skipRecommendedAssetsQuery: Query<
     ) || [],
   // Cache for a day.
   ttl: 24 * 60 * 60,
-  // No need to auto-revalidate since this query is quick.
-  revalidate: false,
 }
 
 export const skipRecommendedAssetQuery: Query<
@@ -181,5 +171,4 @@ export const skipRecommendedAssetQuery: Query<
     )
   },
   ttl: skipRecommendedAssetsQuery.ttl,
-  revalidate: skipRecommendedAssetsQuery.revalidate,
 }

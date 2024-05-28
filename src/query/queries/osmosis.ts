@@ -14,6 +14,4 @@ export const osmosisPriceQuery: Query<
   transform: (body) => (body as { price: number }).price,
   // Cache price for 5 minutes.
   ttl: 5 * 60,
-  // No need to auto-revalidate since this query is quick.
-  revalidate: false,
 }

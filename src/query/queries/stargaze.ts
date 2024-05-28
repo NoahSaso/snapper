@@ -49,6 +49,4 @@ export const stargazeUsdValueQuery: Query<
   },
   // Cache for an hour.
   ttl: 60 * 60,
-  // No need to auto-revalidate since this query is quick.
-  revalidate: false,
 }
