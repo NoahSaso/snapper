@@ -41,6 +41,10 @@ export const whiteWhalePriceQuery: Query<number, { symbol: string }> = {
       symbol: 'WHALE',
     })
 
+    if (whalePrice === undefined) {
+      throw new Error('WHALE price not found')
+    }
+
     // Amount of WHALE for 1 token.
     const priceInWhale = Number(pool.Price)
     const usdPrice = priceInWhale * whalePrice
