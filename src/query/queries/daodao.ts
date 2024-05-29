@@ -303,10 +303,10 @@ export const daodaoValueQuery: Query<
     }[]
     try {
       const [
-        { body: _communityPoolBody },
-        nativeBodyPromises,
-        { body: _cw20Body },
-      ] = await Promise.all([
+        communityPoolBodyPromise,
+        nativeBodyPromisesPromise,
+        cw20BodyPromise,
+      ] = await Promise.allSettled([
         isCommunityPool
           ? query(daodaoCommunityPoolQuery, {
               chainId,
@@ -339,7 +339,15 @@ export const daodaoValueQuery: Query<
         }),
       ])
 
-      communityPoolBody = _communityPoolBody
+      const nativeBodyPromises =
+        nativeBodyPromisesPromise.status === 'fulfilled'
+          ? nativeBodyPromisesPromise.value
+          : null
+
+      communityPoolBody =
+        communityPoolBodyPromise.status === 'fulfilled'
+          ? communityPoolBodyPromise.value.body
+          : {}
       nativeUnstakedBody =
         nativeBodyPromises?.[0].status === 'fulfilled'
           ? nativeBodyPromises[0].value.body
@@ -356,7 +364,8 @@ export const daodaoValueQuery: Query<
         nativeBodyPromises?.[3].status === 'fulfilled'
           ? nativeBodyPromises[3].value.body
           : []
-      cw20Body = _cw20Body
+      cw20Body =
+        cw20BodyPromise.status === 'fulfilled' ? cw20BodyPromise.value.body : []
     } catch (err) {
       if (err instanceof Error && err.message === 'Invalid chain ID') {
         throw new Error('Unsupported chain for value query')

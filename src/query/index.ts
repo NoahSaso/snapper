@@ -192,7 +192,7 @@ export const fetchQuery = async <
           throw new Error('429 too many requests')
         } else {
           throw new Error(
-            `Axios Error: ${error.response?.status}: ${error.response?.statusText}. Response data: ${JSON.stringify(error.response?.data)}`
+            `${error.response?.status} ${error.response?.statusText}. Response: ${JSON.stringify(error.response?.data)}`
           )
         }
       }
