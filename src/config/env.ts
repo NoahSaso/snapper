@@ -39,3 +39,10 @@ export const CONCURRENCY = parseInt(process.env.CONCURRENCY || '50', 10)
  * CoinGecko API Key.
  */
 export const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY || ''
+
+/**
+ * DAO DAO Meilisearch instance for listing DAOs.
+ */
+export const DAODAO_MEILISEARCH_HOST = process.env.DAODAO_MEILISEARCH_HOST || ''
+export const DAODAO_MEILISEARCH_API_KEY =
+  process.env.DAODAO_MEILISEARCH_API_KEY || ''

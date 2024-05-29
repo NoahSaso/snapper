@@ -12,12 +12,15 @@ import {
   polytoneNoteProxyMapToChainIdMap,
 } from '@dao-dao/utils'
 import uniq from 'lodash.uniq'
+import MeiliSearch from 'meilisearch'
 
+import { DAODAO_MEILISEARCH_API_KEY, DAODAO_MEILISEARCH_HOST } from '@/config'
 import { Query, QueryType } from '@/types'
 import {
   TimeRange,
   deserializeSkipAssetOrigin,
   findValueAtTimestamp,
+  getChainForChainId,
   getRangeBounds,
   isValidTimeRange,
   serializeSkipAssetOrigin,
@@ -1493,4 +1496,120 @@ export const daodaoReverseLookupPolytoneProxyQuery: Query<
   },
   // Update once per week. Really this should never change...
   ttl: 7 * 24 * 60 * 60,
+}
+
+export const daodaoChainTvlQuery: Query<
+  number,
+  {
+    chainId: string
+  }
+> = {
+  type: QueryType.Custom,
+  name: 'daodao-chain-tvl',
+  parameters: ['chainId'],
+  execute: async ({ chainId }, query) => {
+    const client = new MeiliSearch({
+      host: DAODAO_MEILISEARCH_HOST,
+      apiKey: DAODAO_MEILISEARCH_API_KEY,
+    })
+
+    const index = client.index(`${chainId}_daos`)
+
+    // Get all DAOs from index.
+    const daos: string[] = []
+    while (true) {
+      const res = await index.getDocuments<{ id: string }>({
+        limit: 10000,
+        offset: daos.length,
+      })
+
+      if (res.results.length === 0) {
+        break
+      }
+
+      // If array is really long, spreading too many arguments into array.push
+      // can cause a stack overflow.
+      res.results.forEach(({ id }) => daos.push(id))
+
+      if (daos.length === res.total) {
+        break
+      }
+    }
+
+    // Get TVL for each DAO in batches of 100.
+    const batch = 100
+    let tvl = 0
+    for (let i = 0; i < daos.length; i += batch) {
+      const tvls = (
+        await Promise.allSettled(
+          daos.slice(i, i + batch).map((address) =>
+            query(daodaoTvlQuery, {
+              chainId,
+              address,
+            })
+          )
+        )
+      ).flatMap((l) => (l.status === 'fulfilled' ? l.value.body.total : []))
+
+      tvls.forEach((daoTvl) => {
+        tvl += typeof daoTvl === 'number' ? daoTvl : 0
+      })
+    }
+
+    return tvl
+  },
+  // Update once per hour.
+  ttl: 60 * 60,
+}
+
+export const daodaoAllTvlQuery: Query<any> = {
+  type: QueryType.Custom,
+  name: 'daodao-all-tvl',
+  execute: async (_, query) => {
+    const client = new MeiliSearch({
+      host: DAODAO_MEILISEARCH_HOST,
+      apiKey: DAODAO_MEILISEARCH_API_KEY,
+    })
+
+    // Get all mainnet chains with DAOs.
+    const chainIds = (
+      await client.getIndexes({
+        limit: 10000,
+      })
+    ).results.flatMap((index) => {
+      const match = index.uid.match(/^(.+)_daos$/)
+      if (!match) {
+        return []
+      }
+
+      const chainId = match[1]
+      if (!chainId) {
+        return []
+      }
+
+      // Check if chain exists and is a mainnet.
+      const config = getChainForChainId(chainId)
+      if (config?.network_type === 'mainnet') {
+        return chainId
+      }
+
+      return []
+    })
+
+    // Fetch TVL per-chain sequentially, since it batches internally.
+    let tvl = 0
+    for (const chainId of chainIds) {
+      const chainTvl = await query(daodaoChainTvlQuery, {
+        chainId,
+      })
+
+      if (typeof chainTvl.body === 'number') {
+        tvl += chainTvl.body
+      }
+    }
+
+    return tvl
+  },
+  // Update once per hour.
+  ttl: 60 * 60,
 }
