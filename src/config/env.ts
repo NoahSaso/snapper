@@ -25,12 +25,17 @@ export const ALLOWED_ORIGINS =
   (process.env.ALLOWED_ORIGINS?.trim() || undefined)?.split(',') || []
 
 /**
- * CoinGecko API Key.
- */
-export const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY || ''
-
-/**
  * Admin dashboard password.
  */
 export const ADMIN_DASHBOARD_PASSWORD =
   process.env.ADMIN_DASHBOARD_PASSWORD || 'admin'
+
+/**
+ * Background revalidation concurrency.
+ */
+export const CONCURRENCY = parseInt(process.env.CONCURRENCY || '50', 10)
+
+/**
+ * CoinGecko API Key.
+ */
+export const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY || ''

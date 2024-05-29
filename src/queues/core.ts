@@ -1,6 +1,6 @@
 import { ConnectionOptions, Processor, Queue, Worker } from 'bullmq'
 
-import { redis } from '@/config'
+import { CONCURRENCY, redis } from '@/config'
 
 import { revalidate } from './processors'
 
@@ -65,7 +65,7 @@ export const getBullWorker = <T extends unknown>(
 ) =>
   new Worker<T>(name, processor, {
     connection: getBullConnection(),
-    concurrency: 10,
+    concurrency: CONCURRENCY,
     removeOnComplete: {
       // Keep last 7 days of successful jobs.
       age: 7 * 24 * 60 * 60,

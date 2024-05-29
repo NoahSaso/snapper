@@ -47,6 +47,9 @@ ALLOWED_ORIGINS=http:\/\/localhost:\d+
 
 # set background job admin dashboard password (viewable at /admin)
 ADMIN_DASHBOARD_PASSWORD=admin
+
+# how many background jobs can process at once
+CONCURRENCY=50
 ```
 
 ## Queries
