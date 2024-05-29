@@ -137,7 +137,7 @@ export const fetchQuery = async <
       //
       // See https://docs.bullmq.io/guide/jobs/job-ids
       if (stale) {
-        const id = `${getQueryKey(query, params)
+        const baseId = `${getQueryKey(query, params)
           // Remove query prefix.
           .slice(QUERY_PREFIX.length)
           // Replace question mark with underscore so it can be clicked in the
@@ -145,9 +145,29 @@ export const fetchQuery = async <
           // open the correct URL.
           .replace('?', '_')}_${currentQueryState.fetchedAt}`
 
-        await getBullQueue<RevalidateProcessorPayload>(
+        const queue = await getBullQueue<RevalidateProcessorPayload>(
           QueueName.Revalidate
-        ).add(
+        )
+
+        // Check if failed job exists, and modify ID so it retries. Since
+        // completed jobs replace the cached query state with a newer value and
+        // a more recent `fetchedAt` value, the job state should only ever be
+        // completed here if there are multiple simultaneous requests and
+        // another request triggered the revalidation which happened to complete
+        // very quickly. If that's the case, no need to retry like we do with
+        // failed jobs since the cache should already be updated.
+        let id = baseId
+        let attempt = 1
+        while (true) {
+          const existingJobState = await queue.getJobState(id)
+          if (existingJobState !== 'failed') {
+            break
+          }
+
+          id = `${baseId}_try${++attempt}`
+        }
+
+        queue.add(
           id,
           {
             query: query.name,

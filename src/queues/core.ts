@@ -65,6 +65,7 @@ export const getBullWorker = <T extends unknown>(
 ) =>
   new Worker<T>(name, processor, {
     connection: getBullConnection(),
+    concurrency: 10,
     removeOnComplete: {
       // Keep last 7 days of successful jobs.
       age: 7 * 24 * 60 * 60,
