@@ -21,7 +21,8 @@ export const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379'
  * Allowed origins for CORS, comma-separated. If empty, all origins are allowed.
  * Interpreted as regex.
  */
-export const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(',') || []
+export const ALLOWED_ORIGINS =
+  (process.env.ALLOWED_ORIGINS?.trim() || undefined)?.split(',') || []
 
 /**
  * CoinGecko API Key.

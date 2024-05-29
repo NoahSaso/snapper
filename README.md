@@ -1,12 +1,17 @@
 # snapper
 
-Snapper is an API caching layer built on Redis and HyperExpress in TypeScript.
-It makes it easy to snapshot API requests and serve them from an intermediary
+Snapper is an API caching layer built on Fastify and Redis in TypeScript. It
+makes it easy to snapshot API requests and serve them from an intermediary
 server to help reduce redundant API calls and navigate externally imposed rate
 limits.
 
-If a query does not exist in the cache, or it has expired, it will be fetched
-directly, cached, and then returned.
+If a query does not exist in the cache, it will be fetched immediately, cached,
+and then returned in the same request. If a query has already been cached, the
+cached value will be returned immediately, regardless of how old it is. If this
+value is stale (based on the configured TTL), a background process will update
+its value for future requests, embodying the
+[stale-while-revalidate](https://web.dev/articles/stale-while-revalidate)
+ideology. This ensures that Snapper balances responsiveness with freshness.
 
 ## Setup
 
@@ -35,6 +40,13 @@ PORT=3000
 
 # set redis connection URL
 REDIS_URL=redis://localhost:6379
+
+# set comma-separated regex CORS origins (optional)
+# if empty, all origins are allowed
+ALLOWED_ORIGINS=http:\/\/localhost:\d+
+
+# set background job admin dashboard password (viewable at /admin)
+ADMIN_DASHBOARD_PASSWORD=admin
 ```
 
 ## Queries
@@ -74,11 +86,6 @@ returned.
 it will be called with the query's parameters as arguments and the result will
 be used.
 
-**`revalidate`** is an optional boolean that determines whether or not this
-query should be revalidated by the revalidate script. If it's a function
-(instead of a boolean), it will be called with the query's parameters as
-arguments and the result will be used. Defaults to `true`.
-
 #### URL queries support:
 
 **`method`** is the optional HTTP method for the request. Defaults to `GET`.
@@ -104,6 +111,7 @@ into new queries.
 ## Usage
 
 Start redis server:
+
 ```sh
 redis-server
 ```
@@ -114,27 +122,33 @@ Run the node server:
 npm run serve
 ```
 
+Run the revalidation processor:
+
+```sh
+npm run process
+```
+
 Perform a query:
 
 ```sh
 curl -X GET 'http://localhost:3000/q/query_name?parameter=value'
 ```
 
-Run the revalidator:
+### Development
+
+Run the server and revalidation processor via Docker:
 
 ```sh
-npm run revalidate
+npm run start:dev
 ```
 
-Run the server and revalidator with pm2:
+The server is exposed on port 3030.
 
-```sh
-npm run start
-```
+View the admin dashboard at http://localhost:3030/admin
 
 ### Production
 
-Run the server and revalidator with pm2 in production (daemon mode):
+Run the server and revalidation processor with pm2 in production (daemon mode):
 
 ```sh
 npm run start:prod
