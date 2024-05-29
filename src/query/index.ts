@@ -206,13 +206,13 @@ export const fetchQuery = async <
         ? axios.post(url, data, { headers })
         : axios.get(url, { headers }))
     } catch (error) {
-      if (error instanceof AxiosError) {
+      if (error instanceof AxiosError && error.response) {
         // manually capture rate limits
-        if (error.response?.status === 429) {
+        if (error.response.status === 429) {
           throw new Error('429 too many requests')
         } else {
           throw new Error(
-            `${error.response?.status} ${error.response?.statusText}. Response: ${JSON.stringify(error.response?.data)}`
+            `${error.response.status} ${error.response.statusText}. Response: ${JSON.stringify(error.response.data)}`
           )
         }
       }
