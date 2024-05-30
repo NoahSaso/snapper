@@ -1558,8 +1558,8 @@ export const daodaoChainTvlQuery: Query<
 
     return tvl
   },
-  // Update once per hour.
-  ttl: 60 * 60,
+  // Update once per day.
+  ttl: 24 * 60 * 60,
 }
 
 export const daodaoAllTvlQuery: Query<any> = {
@@ -1610,6 +1610,6 @@ export const daodaoAllTvlQuery: Query<any> = {
 
     return tvl
   },
-  // Update once per hour.
-  ttl: 60 * 60,
+  // Update once per day.
+  ttl: 24 * 60 * 60,
 }
