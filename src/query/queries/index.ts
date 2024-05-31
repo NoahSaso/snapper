@@ -1,3 +1,5 @@
+import uniq from 'lodash.uniq'
+
 import { Query } from '@/types'
 
 import * as astroport from './astroport'
@@ -21,3 +23,12 @@ export const queries: Query<any, any>[] = [
   ...Object.values(stargaze),
   ...Object.values(whiteWhale),
 ]
+
+// Verify that all queries have unique names.
+const queryNames = queries.map((q) => q.name)
+const duplicates = uniq(
+  queryNames.filter((name) => queryNames.filter((n) => n === name).length > 1)
+)
+if (duplicates.length) {
+  throw new Error(`Duplicate query names: ${duplicates.join(', ')}`)
+}

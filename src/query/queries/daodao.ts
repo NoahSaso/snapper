@@ -1498,6 +1498,49 @@ export const daodaoReverseLookupPolytoneProxyQuery: Query<
   ttl: 7 * 24 * 60 * 60,
 }
 
+/**
+ * Fetch mainnet chain IDs that are indexed.
+ */
+export const daodaoIndexedChainsQuery: Query<string[]> = {
+  type: QueryType.Custom,
+  name: 'daodao-indexed-chains',
+  execute: async () => {
+    const client = new MeiliSearch({
+      host: DAODAO_MEILISEARCH_HOST,
+      apiKey: DAODAO_MEILISEARCH_API_KEY,
+    })
+
+    // Get all mainnet chains with DAOs.
+    const chainIds = (
+      await client.getIndexes({
+        limit: 10000,
+      })
+    ).results.flatMap((index) => {
+      const match = index.uid.match(/^(.+)_daos$/)
+      if (!match) {
+        return []
+      }
+
+      const chainId = match[1]
+      if (!chainId) {
+        return []
+      }
+
+      // Check if chain exists and is a mainnet.
+      const config = getChainForChainId(chainId)
+      if (config?.network_type === 'mainnet') {
+        return chainId
+      }
+
+      return []
+    })
+
+    return chainIds
+  },
+  // Update once per day.
+  ttl: 24 * 60 * 60,
+}
+
 export const daodaoChainTvlQuery: Query<
   number,
   {
@@ -1562,39 +1605,11 @@ export const daodaoChainTvlQuery: Query<
   ttl: 24 * 60 * 60,
 }
 
-export const daodaoAllTvlQuery: Query<any> = {
+export const daodaoAllTvlQuery: Query<number> = {
   type: QueryType.Custom,
   name: 'daodao-all-tvl',
   execute: async (_, query) => {
-    const client = new MeiliSearch({
-      host: DAODAO_MEILISEARCH_HOST,
-      apiKey: DAODAO_MEILISEARCH_API_KEY,
-    })
-
-    // Get all mainnet chains with DAOs.
-    const chainIds = (
-      await client.getIndexes({
-        limit: 10000,
-      })
-    ).results.flatMap((index) => {
-      const match = index.uid.match(/^(.+)_daos$/)
-      if (!match) {
-        return []
-      }
-
-      const chainId = match[1]
-      if (!chainId) {
-        return []
-      }
-
-      // Check if chain exists and is a mainnet.
-      const config = getChainForChainId(chainId)
-      if (config?.network_type === 'mainnet') {
-        return chainId
-      }
-
-      return []
-    })
+    const { body: chainIds } = await query(daodaoIndexedChainsQuery, {})
 
     // Fetch TVL per-chain sequentially, since it batches internally.
     let tvl = 0
@@ -1609,6 +1624,148 @@ export const daodaoAllTvlQuery: Query<any> = {
     }
 
     return tvl
+  },
+  // Update once per day.
+  ttl: 24 * 60 * 60,
+}
+
+export const daodaoChainStatsDaosQuery: Query<
+  number,
+  {
+    chainId: string
+  }
+> = {
+  type: QueryType.Url,
+  name: 'daodao-chain-stats-daos',
+  parameters: ['chainId'],
+  url: ({ chainId }) =>
+    `https://indexer.daodao.zone/${chainId}/generic/_/stats/daos`,
+  // Update once per day.
+  ttl: 24 * 60 * 60,
+}
+
+export const daodaoChainStatsProposalsQuery: Query<
+  number,
+  {
+    chainId: string
+  }
+> = {
+  type: QueryType.Url,
+  name: 'daodao-chain-stats-proposals',
+  parameters: ['chainId'],
+  url: ({ chainId }) =>
+    `https://indexer.daodao.zone/${chainId}/generic/_/stats/proposals`,
+  // Update once per day.
+  ttl: 24 * 60 * 60,
+}
+
+export const daodaoChainStatsVotesQuery: Query<
+  number,
+  {
+    chainId: string
+  }
+> = {
+  type: QueryType.Url,
+  name: 'daodao-chain-stats-votes',
+  parameters: ['chainId'],
+  url: ({ chainId }) =>
+    `https://indexer.daodao.zone/${chainId}/generic/_/stats/votes`,
+  // Update once per day.
+  ttl: 24 * 60 * 60,
+}
+
+export const daodaoChainStatsUniqueVotersQuery: Query<
+  number,
+  {
+    chainId: string
+  }
+> = {
+  type: QueryType.Url,
+  name: 'daodao-chain-stats-unique-voters',
+  parameters: ['chainId'],
+  url: ({ chainId }) =>
+    `https://indexer.daodao.zone/${chainId}/generic/_/stats/uniqueVoters`,
+  // Update once per day.
+  ttl: 24 * 60 * 60,
+}
+
+export const daodaoChainStatsQuery: Query<
+  {
+    daos: number
+    proposals: number
+    votes: number
+    uniqueVoters: number
+  },
+  {
+    chainId: string
+  }
+> = {
+  type: QueryType.Custom,
+  name: 'daodao-chain-stats',
+  parameters: ['chainId'],
+  execute: async ({ chainId }, query) => {
+    const [
+      { body: daos },
+      { body: proposals },
+      { body: votes },
+      { body: uniqueVoters },
+    ] = await Promise.all([
+      query(daodaoChainStatsDaosQuery, {
+        chainId,
+      }),
+      query(daodaoChainStatsProposalsQuery, {
+        chainId,
+      }),
+      query(daodaoChainStatsVotesQuery, {
+        chainId,
+      }),
+      query(daodaoChainStatsUniqueVotersQuery, {
+        chainId,
+      }),
+    ])
+
+    return {
+      daos,
+      proposals,
+      votes,
+      uniqueVoters,
+    }
+  },
+  // Update once per day.
+  ttl: 24 * 60 * 60,
+}
+
+export const daodaoAllStatsQuery: Query<{
+  daos: number
+  proposals: number
+  votes: number
+  uniqueVoters: number
+}> = {
+  type: QueryType.Custom,
+  name: 'daodao-all-stats',
+  execute: async (_, query) => {
+    const { body: chainIds } = await query(daodaoIndexedChainsQuery, {})
+
+    // Fetch stats for all chains.
+    const allStats = (
+      await Promise.allSettled(
+        chainIds.map((chainId) =>
+          query(daodaoChainStatsQuery, {
+            chainId,
+          })
+        )
+      )
+    ).flatMap((p) => (p.status === 'fulfilled' ? p.value.body : []))
+
+    return {
+      daos: allStats.reduce((sum, { daos }) => sum + daos, 0),
+      proposals: allStats.reduce((sum, { proposals }) => sum + proposals, 0),
+      votes: allStats.reduce((sum, { votes }) => sum + votes, 0),
+      uniqueVoters: allStats.reduce(
+        (sum, { uniqueVoters }) => sum + uniqueVoters,
+        0
+      ),
+    }
   },
   // Update once per day.
   ttl: 24 * 60 * 60,
