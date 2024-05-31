@@ -1166,6 +1166,16 @@ export const daodaoAccountsQuery: Query<
   name: 'daodao-accounts',
   parameters: ['chainId', 'address'],
   execute: async ({ chainId, address }, query) => {
+    if (address === COMMUNITY_POOL_ADDRESS_PLACEHOLDER) {
+      return [
+        {
+          type: 'base',
+          chainId,
+          address,
+        },
+      ]
+    }
+
     const [{ body: isIca }, { body: isPolytoneProxy }] = await Promise.all([
       query(cosmosIsIcaQuery, {
         chainId,
