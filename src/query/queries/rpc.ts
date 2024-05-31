@@ -112,6 +112,12 @@ export const cosmosStakedBalanceQuery = makeStargateQuery(
   (client, { address }) => client.getBalanceStaked(address)
 )
 
+export const cosmosCommunityPoolBalancesQuery = makeRpcQuery(
+  'cosmos-community-pool-balances',
+  [],
+  async (client) => (await client.distribution.v1beta1.communityPool({})).pool
+)
+
 export const cosmosUnstakingBalanceQuery = makeRpcQuery(
   'cosmos-unstaking-balance',
   ['address'],

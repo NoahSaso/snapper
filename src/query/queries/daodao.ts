@@ -33,6 +33,7 @@ import { osmosisPriceQuery } from './osmosis'
 import {
   cosmosBalancesQuery,
   cosmosClaimableRewardsQuery,
+  cosmosCommunityPoolBalancesQuery,
   cosmosContractStateKeyQuery,
   cosmosIsIcaQuery,
   cosmosStakedBalanceQuery,
@@ -295,6 +296,15 @@ export const daodaoValueQuery: Query<
     const tokenFilter = _tokenFilter?.split(',')
     const isCommunityPool = address === COMMUNITY_POOL_ADDRESS_PLACEHOLDER
 
+    // Check if the chain is indexed.
+    const communityPoolIsIndexed =
+      isCommunityPool &&
+      (
+        await query(daodaoChainIsIndexedQuery, {
+          chainId,
+        })
+      ).body
+
     let communityPoolBody: Record<string, string | undefined>
     let nativeUnstakedBody: readonly Coin[]
     let nativeStakedBody: Coin | null
@@ -306,15 +316,21 @@ export const daodaoValueQuery: Query<
     }[]
     try {
       const [
-        communityPoolBodyPromise,
+        communityPoolIndexedBodyPromise,
+        communityPoolNotIndexedBodyPromise,
         nativeBodyPromisesPromise,
         cw20BodyPromise,
       ] = await Promise.allSettled([
-        isCommunityPool
+        isCommunityPool && communityPoolIsIndexed
           ? query(daodaoCommunityPoolQuery, {
               chainId,
             })
           : { body: {} as Record<string, string | undefined> },
+        isCommunityPool && !communityPoolIsIndexed
+          ? query(cosmosCommunityPoolBalancesQuery, {
+              chainId,
+            })
+          : { body: [] as DecCoin[] },
         !isCommunityPool
           ? // Not all chains have staking, so allow these to fail.
             Promise.allSettled([
@@ -348,9 +364,17 @@ export const daodaoValueQuery: Query<
           : null
 
       communityPoolBody =
-        communityPoolBodyPromise.status === 'fulfilled'
-          ? communityPoolBodyPromise.value.body
-          : {}
+        communityPoolIsIndexed &&
+        communityPoolIndexedBodyPromise.status === 'fulfilled'
+          ? communityPoolIndexedBodyPromise.value.body
+          : !communityPoolIsIndexed &&
+              communityPoolNotIndexedBodyPromise.status === 'fulfilled'
+            ? Object.fromEntries(
+                communityPoolNotIndexedBodyPromise.value.body.map(
+                  ({ denom, amount }) => [denom, amount]
+                )
+              )
+            : {}
       nativeUnstakedBody =
         nativeBodyPromises?.[0].status === 'fulfilled'
           ? nativeBodyPromises[0].value.body
@@ -1547,6 +1571,24 @@ export const daodaoIndexedChainsQuery: Query<string[]> = {
 
     return chainIds
   },
+  // Update once per day.
+  ttl: 24 * 60 * 60,
+}
+
+/**
+ * Check whether or not a chain is indexed.
+ */
+export const daodaoChainIsIndexedQuery: Query<
+  boolean,
+  {
+    chainId: string
+  }
+> = {
+  type: QueryType.Custom,
+  name: 'daodao-chain-is-indexed',
+  parameters: ['chainId'],
+  execute: async ({ chainId }, query) =>
+    (await query(daodaoIndexedChainsQuery, {})).body.includes(chainId),
   // Update once per day.
   ttl: 24 * 60 * 60,
 }
