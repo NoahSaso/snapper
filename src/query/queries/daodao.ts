@@ -1685,13 +1685,15 @@ export const daodaoChainStatsDaosQuery: Query<
   number,
   {
     chainId: string
+    daysAgo?: string
   }
 > = {
   type: QueryType.Url,
   name: 'daodao-chain-stats-daos',
   parameters: ['chainId'],
-  url: ({ chainId }) =>
-    `https://indexer.daodao.zone/${chainId}/generic/_/stats/daos`,
+  optionalParameters: ['daysAgo'],
+  url: ({ chainId, daysAgo }) =>
+    `https://indexer.daodao.zone/${chainId}/generic/_/stats/daos${daysAgo ? `?daysAgo=${daysAgo}` : ''}`,
   // Update once per day.
   ttl: 24 * 60 * 60,
 }
@@ -1700,13 +1702,15 @@ export const daodaoChainStatsProposalsQuery: Query<
   number,
   {
     chainId: string
+    daysAgo?: string
   }
 > = {
   type: QueryType.Url,
   name: 'daodao-chain-stats-proposals',
   parameters: ['chainId'],
-  url: ({ chainId }) =>
-    `https://indexer.daodao.zone/${chainId}/generic/_/stats/proposals`,
+  optionalParameters: ['daysAgo'],
+  url: ({ chainId, daysAgo }) =>
+    `https://indexer.daodao.zone/${chainId}/generic/_/stats/proposals${daysAgo ? `?daysAgo=${daysAgo}` : ''}`,
   // Update once per day.
   ttl: 24 * 60 * 60,
 }
@@ -1715,13 +1719,15 @@ export const daodaoChainStatsVotesQuery: Query<
   number,
   {
     chainId: string
+    daysAgo?: string
   }
 > = {
   type: QueryType.Url,
   name: 'daodao-chain-stats-votes',
   parameters: ['chainId'],
-  url: ({ chainId }) =>
-    `https://indexer.daodao.zone/${chainId}/generic/_/stats/votes`,
+  optionalParameters: ['daysAgo'],
+  url: ({ chainId, daysAgo }) =>
+    `https://indexer.daodao.zone/${chainId}/generic/_/stats/votes${daysAgo ? `?daysAgo=${daysAgo}` : ''}`,
   // Update once per day.
   ttl: 24 * 60 * 60,
 }
@@ -1730,13 +1736,15 @@ export const daodaoChainStatsUniqueVotersQuery: Query<
   number,
   {
     chainId: string
+    daysAgo?: string
   }
 > = {
   type: QueryType.Url,
   name: 'daodao-chain-stats-unique-voters',
   parameters: ['chainId'],
-  url: ({ chainId }) =>
-    `https://indexer.daodao.zone/${chainId}/generic/_/stats/uniqueVoters`,
+  optionalParameters: ['daysAgo'],
+  url: ({ chainId, daysAgo }) =>
+    `https://indexer.daodao.zone/${chainId}/generic/_/stats/uniqueVoters${daysAgo ? `?daysAgo=${daysAgo}` : ''}`,
   // Update once per day.
   ttl: 24 * 60 * 60,
 }
@@ -1750,12 +1758,14 @@ export const daodaoChainStatsQuery: Query<
   },
   {
     chainId: string
+    daysAgo?: string
   }
 > = {
   type: QueryType.Custom,
   name: 'daodao-chain-stats',
   parameters: ['chainId'],
-  execute: async ({ chainId }, query) => {
+  optionalParameters: ['daysAgo'],
+  execute: async ({ chainId, daysAgo }, query) => {
     const [
       { body: daos },
       { body: proposals },
@@ -1764,15 +1774,19 @@ export const daodaoChainStatsQuery: Query<
     ] = await Promise.all([
       query(daodaoChainStatsDaosQuery, {
         chainId,
+        daysAgo,
       }),
       query(daodaoChainStatsProposalsQuery, {
         chainId,
+        daysAgo,
       }),
       query(daodaoChainStatsVotesQuery, {
         chainId,
+        daysAgo,
       }),
       query(daodaoChainStatsUniqueVotersQuery, {
         chainId,
+        daysAgo,
       }),
     ])
 
@@ -1787,15 +1801,21 @@ export const daodaoChainStatsQuery: Query<
   ttl: 24 * 60 * 60,
 }
 
-export const daodaoAllStatsQuery: Query<{
-  daos: number
-  proposals: number
-  votes: number
-  uniqueVoters: number
-}> = {
+export const daodaoAllStatsQuery: Query<
+  {
+    daos: number
+    proposals: number
+    votes: number
+    uniqueVoters: number
+  },
+  {
+    daysAgo?: string
+  }
+> = {
   type: QueryType.Custom,
   name: 'daodao-all-stats',
-  execute: async (_, query) => {
+  optionalParameters: ['daysAgo'],
+  execute: async ({ daysAgo }, query) => {
     const { body: chainIds } = await query(daodaoIndexedChainsQuery, {})
 
     // Fetch stats for all chains.
@@ -1804,6 +1824,7 @@ export const daodaoAllStatsQuery: Query<{
         chainIds.map((chainId) =>
           query(daodaoChainStatsQuery, {
             chainId,
+            daysAgo,
           })
         )
       )
