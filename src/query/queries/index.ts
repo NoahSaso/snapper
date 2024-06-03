@@ -5,6 +5,7 @@ import { Query } from '@/types'
 import * as astroport from './astroport'
 import * as coingecko from './coingecko'
 import * as daodao from './daodao'
+import * as daodaoFeaturedDaos from './daodaoFeaturedDaos'
 import * as ibc from './ibc'
 import * as osmosis from './osmosis'
 import * as rpc from './rpc'
@@ -16,6 +17,7 @@ export const queries: Query<any, any>[] = [
   ...Object.values(astroport),
   ...Object.values(coingecko),
   ...Object.values(daodao),
+  ...Object.values(daodaoFeaturedDaos),
   ...Object.values(ibc),
   ...Object.values(osmosis),
   ...Object.values(rpc),
