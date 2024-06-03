@@ -113,6 +113,9 @@ Run the node server:
 
 ```sh
 npm run serve
+
+### For hot reloading 
+npm run serve:dev
 ```
 
 Perform a query:

@@ -2,6 +2,7 @@ import { COINGECKO_API_KEY } from '@/config'
 import { Query, QueryType } from '@/types'
 import { TimeRange, getRangeBounds, isValidTimeRange } from '@/utils'
 
+
 export const coingeckoPriceQuery: Query<
   number,
   {
@@ -12,9 +13,9 @@ export const coingeckoPriceQuery: Query<
   name: 'coingecko-price',
   parameters: ['id'],
   url: ({ id }) =>
-    `https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd`,
+    `https://pro-api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd`,
   headers: {
-    'x-cg-demo-api-key': COINGECKO_API_KEY,
+    'x-cg-pro-api-key': COINGECKO_API_KEY,
   },
   transform: (body, { id }) => (body[id] as { usd: number }).usd,
   // Cache price for 5 minutes.
@@ -28,6 +29,7 @@ export const coingeckoPriceHistoryQuery: Query<
   {
     id: string
     range: TimeRange
+    interval: string;
     // Optionally specify an end timestamp.
     end?: string
   }
@@ -35,20 +37,19 @@ export const coingeckoPriceHistoryQuery: Query<
   type: QueryType.Url,
   name: 'coingecko-price-history',
   parameters: ['id', 'range'],
-  optionalParameters: ['end'],
-  validate: ({ range, end }) =>
+  optionalParameters: ['end','interval'],
+  validate: ({ range, end, }) =>
     isValidTimeRange(range) &&
     (!end || (!isNaN(Number(end)) && Number(end) > 0)),
-  url: ({ id, range, end: endTime }) => {
+  url: ({ id, range, end: endTime, interval }) => {
     const { start, end } = getRangeBounds(
       range,
       endTime ? new Date(Number(endTime)) : undefined
     )
-
-    return `https://api.coingecko.com/api/v3/coins/${id}/market_chart/range?vs_currency=usd&from=${BigInt(start).toString()}&to=${BigInt(end).toString()}`
+    return `https://pro-api.coingecko.com/api/v3/coins/${id}/market_chart/range?vs_currency=usd&interval=${interval}&from=${BigInt(start).toString()}&to=${BigInt(end).toString()}`
   },
   headers: {
-    'x-cg-demo-api-key': COINGECKO_API_KEY,
+    'x-cg-pro-api-key': COINGECKO_API_KEY,
   },
   transform: (body) => body.prices as [number, number][],
   // Cache for:
