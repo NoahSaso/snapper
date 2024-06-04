@@ -394,7 +394,7 @@ export const daodaoValueQuery: Query<
       cw20Body =
         cw20BodyPromise.status === 'fulfilled' ? cw20BodyPromise.value.body : []
     } catch (err) {
-      if (err instanceof Error && err.message === 'Invalid chain ID') {
+      if (err instanceof Error && err.message.includes('Invalid chain ID')) {
         throw new Error('Unsupported chain for value query')
       }
 
@@ -601,7 +601,7 @@ export const daodaoValueHistoryQuery: Query<
       nativeSnapshots = nativeBody || []
       cw20Snapshots = cw20Body || []
     } catch (err) {
-      if (err instanceof Error && err.message === 'Invalid chain ID') {
+      if (err instanceof Error && err.message.includes('Invalid chain ID')) {
         throw new Error('Unsupported chain for value history query')
       }
 
@@ -1229,7 +1229,7 @@ export const daodaoAccountsQuery: Query<
         chainId = reverseLookup.chainId
         address = reverseLookup.address
       } catch (err) {
-        if (err instanceof Error && err.message === 'Invalid chain ID') {
+        if (err instanceof Error && err.message.includes('Invalid chain ID')) {
           throw new Error('Unsupported chain for polytone reverse lookup')
         }
 
