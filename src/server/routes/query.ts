@@ -34,13 +34,12 @@ export const query = async (
 
   let queryState
   try {
-    queryState = await fetchQuery(
+    queryState = await fetchQuery({
       query,
       params,
-      false,
       // Params validated above; no need to validate again.
-      true
-    )
+      noValidate: true,
+    })
   } catch (err) {
     console.error(`${logPrefix} - 500`, err)
     reply

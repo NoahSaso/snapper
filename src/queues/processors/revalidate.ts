@@ -17,12 +17,12 @@ export const revalidate: Processor<RevalidateProcessorPayload> = async ({
 
   const start = Date.now()
 
-  await fetchQuery(
+  await fetchQuery({
     query,
     params,
     // Force fetch, ignoring cache.
-    true
-  )
+    behavior: 'forceFresh',
+  })
 
   const duration = Date.now() - start
 

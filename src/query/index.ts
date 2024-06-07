@@ -78,36 +78,47 @@ export const validateQueryParams = async <
   return acceptedParams
 }
 
-/**
- * Fetch the query (from cache if available, or executing it otherwise), store
- * it in the cache, and return the state.
- */
-export const fetchQuery = async <
+export type FetchQueryOptions<
   Body = unknown,
   Parameters extends Record<string, string> = Record<string, string>,
->(
+> = {
   /**
    * The query to fetch.
    */
-  query: Query<Body, Parameters>,
+  query: Query<Body, Parameters>
   /**
    * Parameters to validate (unless validation disabled) and pass to the query.
    */
-  params: Parameters,
+  params: Parameters
   /**
-   * Whether or not to force fetch the query even if it's already in the cache.
-   * This may be used to revalidate the cache before it expires.
+   * Control how the query should be fetched.
+   * - `staleBackgroundRevalidate`: The cached value will be returned, even if
+   *   stale, and a background process will revalidate it in the background for
+   *   future queries.
+   * - `revalidateStale`: If the cached value is stale, the query will be
+   *   revalidated synchronously and returned immediately, so the value returned
+   *   will always be fresh.
+   * - `forceFresh`: The query will always be fetched fresh.
    *
-   * Defaults to fase.
+   * Defaults to `staleBackgroundRevalidate`. `revalidateStale` is used for
+   * subqueries, where one query depends on another query, since we want to have
+   * fresh values for a query when we do decide to recompute it. Without this,
+   * chains of stale values with background revalidation when a query depends on
+   * other queries cause stale data to stick around for too long.
    */
-  forceFetch = false,
+  behavior?: 'staleBackgroundRevalidate' | 'revalidateStale' | 'forceFresh'
   /**
    * Whether or not to ignore parameter validation.
    *
    * Defaults to false.
    */
-  noValidate = false
-): Promise<{
+  noValidate?: boolean
+}
+
+export type FetchQueryResult<Body = unknown> = {
+  /**
+   * Resulting query state with data.
+   */
   data: QueryState<Body>
   /**
    * Whether or not the query was fetched from the cache.
@@ -118,77 +129,101 @@ export const fetchQuery = async <
    * is also true.
    */
   stale: boolean
-}> => {
+}
+
+/**
+ * Fetch the query (from cache if available, or executing it otherwise), store
+ * it in the cache, and return the state.
+ */
+export const fetchQuery = async <
+  Body = unknown,
+  Parameters extends Record<string, string> = Record<string, string>,
+>({
+  query,
+  params,
+  behavior = 'staleBackgroundRevalidate',
+  noValidate = false,
+}: FetchQueryOptions<Body, Parameters>): Promise<FetchQueryResult<Body>> => {
   // Validate query parameters.
   params = noValidate ? params : await validateQueryParams(query, params)
 
-  if (!forceFetch) {
+  // If not force fetching a fresh value, check cache.
+  if (behavior !== 'forceFresh') {
     const currentQueryState = await getQueryState(query, params)
     if (currentQueryState) {
       const stale =
         !!currentQueryState.staleAt && currentQueryState.staleAt <= Date.now()
 
-      // If cached value is stale, queue background job to revalidate the query.
+      // If query is not stale, return the cached value. If it is stale, and we
+      // are using the stale with background revalidate behavior, queue a
+      // background job to revalidate it and still return the cached value.
       //
-      // Create an ID unique to the stale query to avoid overlapping jobs. If
-      // multiple requests come in for the same stale query before the job is
-      // complete, we don't want to revalidate multiple times. Adding a job to
-      // the queue with an ID that already exist is a no-op.
-      //
-      // See https://docs.bullmq.io/guide/jobs/job-ids
-      if (stale) {
-        const baseId = `${getQueryKey(query, params)
-          // Remove query prefix.
-          .slice(QUERY_PREFIX.length)
-          // Replace question mark with underscore so it can be clicked in the
-          // Bull Board. The question mark doesn't get escaped so it doesn't
-          // open the correct URL.
-          .replace('?', '_')}_${currentQueryState.fetchedAt}`
+      // Otherwise, it must be stale and we are using the revalidate stale
+      // behavior, so fetch the fresh value by executing the query and return it
+      // immediately.
+      if (!stale || behavior === 'staleBackgroundRevalidate') {
+        // If cached value is stale, queue background job to revalidate the
+        // query.
+        //
+        // Create an ID unique to the stale query to avoid overlapping jobs. If
+        // multiple requests come in for the same stale query before the job is
+        // complete, we don't want to revalidate multiple times. Adding a job to
+        // the queue with an ID that already exist is a no-op.
+        //
+        // See https://docs.bullmq.io/guide/jobs/job-ids
+        if (stale) {
+          const baseId = `${getQueryKey(query, params)
+            // Remove query prefix.
+            .slice(QUERY_PREFIX.length)
+            // Replace question mark with underscore so it can be clicked in the
+            // Bull Board. The question mark doesn't get escaped so it doesn't
+            // open the correct URL.
+            .replace('?', '_')}_${currentQueryState.fetchedAt}`
 
-        const queue = await getBullQueue<RevalidateProcessorPayload>(
-          QueueName.Revalidate
-        )
+          const queue = await getBullQueue<RevalidateProcessorPayload>(
+            QueueName.Revalidate
+          )
 
-        // Check if failed job exists, and modify ID so it retries. Since
-        // completed jobs replace the cached query state with a newer value and
-        // a more recent `fetchedAt` value, the job state should only ever be
-        // completed here if there are multiple simultaneous requests and
-        // another request triggered the revalidation which happened to complete
-        // very quickly. If that's the case, no need to retry like we do with
-        // failed jobs since the cache should already be updated.
-        let id = baseId
-        let attempt = 1
-        while (true) {
-          const existingJobState = await queue.getJobState(id)
-          if (existingJobState !== 'failed') {
-            break
+          // Check if failed job exists, and modify ID so it retries. Since
+          // completed jobs replace the cached query state with a newer value and
+          // a more recent `fetchedAt` value, the job state should only ever be
+          // completed here if there are multiple simultaneous requests and
+          // another request triggered the revalidation which happened to complete
+          // very quickly. If that's the case, no need to retry like we do with
+          // failed jobs since the cache should already be updated.
+          let id = baseId
+          let attempt = 1
+          while (true) {
+            const existingJobState = await queue.getJobState(id)
+            if (existingJobState !== 'failed') {
+              break
+            }
+
+            id = `${baseId}_try${++attempt}`
           }
 
-          id = `${baseId}_try${++attempt}`
+          queue.add(
+            id,
+            {
+              query: query.name,
+              params,
+            },
+            {
+              jobId: id,
+            }
+          )
         }
 
-        queue.add(
-          id,
-          {
-            query: query.name,
-            params,
-          },
-          {
-            jobId: id,
-          }
-        )
-      }
-
-      return {
-        data: currentQueryState,
-        cached: true,
-        stale,
+        return {
+          data: currentQueryState,
+          cached: true,
+          stale,
+        }
       }
     }
   }
 
   const ttl = typeof query.ttl === 'function' ? query.ttl(params) : query.ttl
-  const fetchedAt = Date.now()
 
   let queryState: QueryState<Body>
   if (query.type === QueryType.Url) {
@@ -224,6 +259,8 @@ export const fetchQuery = async <
       ? query.transform(response.data, params)
       : response.data
 
+    const fetchedAt = Date.now()
+
     queryState = {
       status: response.status,
       statusText: response.statusText,
@@ -234,8 +271,26 @@ export const fetchQuery = async <
   } else if (query.type === QueryType.Custom) {
     const body = await query.execute(
       params,
-      async (...p) => (await fetchQuery(...p)).data
+      async (query, params) =>
+        (
+          await fetchQuery({
+            query,
+            params,
+            // Make sure to use fresh values when performing subqueries.
+            behavior: 'revalidateStale',
+          })
+        ).data
     )
+
+    // Get date after request is complete. This ensures that subqueries are
+    // correctly cached before their top-level query is cached, so that if the
+    // TTLs of a top-level query and its subqueries are the same, the subqueries
+    // will need revalidation before or at the same time as the top-level query.
+    // If the top-level query were cached before its subqueries, the top-level
+    // query might revalidate with the same cached subquery values from the
+    // previous fetch, resulting in the same value for another cycle.
+    const fetchedAt = Date.now()
+
     queryState = {
       body,
       fetchedAt,
