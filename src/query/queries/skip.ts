@@ -54,21 +54,38 @@ export const skipChainsQuery: Query<SkipChain[]> = {
   ttl: 24 * 60 * 60,
 }
 
-export const skipChainQuery: Query<SkipChain | undefined, { chainId: string }> =
-  {
-    type: QueryType.Custom,
-    name: 'skip-chain',
-    parameters: ['chainId'],
-    execute: async ({ chainId }, query) => {
-      const { body: chains } = await query(skipChainsQuery, {})
+export const skipChainQuery: Query<
+  SkipChain | undefined,
+  { chainId: string; chainName: string }
+> = {
+  type: QueryType.Custom,
+  name: 'skip-chain',
+  optionalParameters: ['chainId', 'chainName'],
+  validate: ({ chainId, chainName }) => {
+    if (!chainId && !chainName) {
+      return new Error('chainId or chainName is required')
+    }
 
-      return chains && Array.isArray(chains)
-        ? chains.find((chain) => chain.chain_id === chainId)
-        : undefined
-    },
-    // Cache for a day.
-    ttl: 24 * 60 * 60,
-  }
+    if (chainId && chainName) {
+      return new Error('chainId and chainName are mutually exclusive')
+    }
+
+    return true
+  },
+  execute: async ({ chainId, chainName }, query) => {
+    const { body: chains } = await query(skipChainsQuery, {})
+
+    return chains && Array.isArray(chains)
+      ? chains.find(
+          (chain) =>
+            (chainId && chain.chain_id === chainId) ||
+            (chainName && chain.chain_name === chainName)
+        )
+      : undefined
+  },
+  // Cache for a day.
+  ttl: 24 * 60 * 60,
+}
 
 export const skipAssetsQuery: Query<
   SkipAsset[],
