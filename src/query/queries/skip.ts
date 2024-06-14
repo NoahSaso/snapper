@@ -48,7 +48,7 @@ export type SkipAssetRecommendation = {
 export const skipChainsQuery: Query<SkipChain[]> = {
   type: QueryType.Url,
   name: 'skip-chains',
-  url: SKIP_API_BASE + '/v1/info/chains',
+  url: SKIP_API_BASE + '/v2/info/chains',
   transform: (body: any) => body?.chains || [],
   // Cache for a day.
   ttl: 24 * 60 * 60,
@@ -58,8 +58,9 @@ export const skipChainQuery: Query<SkipChain | undefined, { chainId: string }> =
   {
     type: QueryType.Custom,
     name: 'skip-chain',
+    parameters: ['chainId'],
     execute: async ({ chainId }, query) => {
-      const { body: chains } = await query(skipChainsQuery, { chainId })
+      const { body: chains } = await query(skipChainsQuery, {})
 
       return chains && Array.isArray(chains)
         ? chains.find((chain) => chain.chain_id === chainId)
