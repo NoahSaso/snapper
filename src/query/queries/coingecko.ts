@@ -26,6 +26,7 @@ export const coingeckoPriceHistoryQuery: Query<
   {
     id: string
     range: TimeRange
+    interval?: string
     // Optionally specify an end timestamp.
     end?: string
   }
@@ -33,17 +34,16 @@ export const coingeckoPriceHistoryQuery: Query<
   type: QueryType.Url,
   name: 'coingecko-price-history',
   parameters: ['id', 'range'],
-  optionalParameters: ['end'],
+  optionalParameters: ['end', 'interval'],
   validate: ({ range, end }) =>
     isValidTimeRange(range) &&
     (!end || (!isNaN(Number(end)) && Number(end) > 0)),
-  url: ({ id, range, end: endTime }) => {
+  url: ({ id, range, end: endTime, interval }) => {
     const { start, end } = getRangeBounds(
       range,
       endTime ? new Date(Number(endTime)) : undefined
     )
-
-    return `https://pro-api.coingecko.com/api/v3/coins/${id}/market_chart/range?vs_currency=usd&from=${BigInt(start).toString()}&to=${BigInt(end).toString()}`
+    return `https://pro-api.coingecko.com/api/v3/coins/${id}/market_chart/range?vs_currency=usd&from=${BigInt(start).toString()}&to=${BigInt(end).toString()}${interval ? `&interval=${interval}` : ''}`
   },
   headers: {
     'x-cg-pro-api-key': COINGECKO_API_KEY,
