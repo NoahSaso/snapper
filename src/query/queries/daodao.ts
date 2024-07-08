@@ -8,6 +8,7 @@ import {
   INVALID_CONTRACT_ERROR_SUBSTRINGS,
   POLYTONE_CONFIG_PER_CHAIN,
   encodeMessageAsBase64,
+  getChainForChainId,
   parseEncodedMessage,
   polytoneNoteProxyMapToChainIdMap,
 } from '@dao-dao/utils'
@@ -20,7 +21,6 @@ import {
   TimeRange,
   deserializeSkipAssetOrigin,
   findValueAtTimestamp,
-  getChainForChainId,
   getRangeBounds,
   isValidTimeRange,
   serializeSkipAssetOrigin,

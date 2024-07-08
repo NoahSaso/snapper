@@ -1,9 +1,8 @@
 import { IBCInfo } from '@chain-registry/types'
 import { ibc } from '@dao-dao/types/protobuf'
-import { getRpcForChainId, retry } from '@dao-dao/utils'
+import { getChainForChainId, getRpcForChainId, retry } from '@dao-dao/utils'
 
 import { Query, QueryType } from '@/types'
-import { getChainForChainId } from '@/utils'
 
 export const ibcChainRegistryQuery: Query<
   IBCInfo,

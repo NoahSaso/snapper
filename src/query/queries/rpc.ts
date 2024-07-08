@@ -5,7 +5,7 @@ import { cosmos } from '@dao-dao/types/protobuf'
 import { getAllRpcResponse, getRpcForChainId, retry } from '@dao-dao/utils'
 
 import { Query, QueryState, QueryType } from '@/types'
-import { getChainForChainId } from '@/utils'
+import { validateChainId } from '@/utils'
 
 type RpcClient = Awaited<
   ReturnType<typeof cosmos.ClientFactory.createRPCQueryClient>
@@ -31,13 +31,6 @@ const getRpcClient = (chainId: string): Promise<RpcClient> =>
         })
       ).cosmos
   )
-
-const validateChainId = ({ chainId }: { chainId: string }) => {
-  if (!getChainForChainId(chainId)) {
-    return new Error('Invalid chain ID')
-  }
-  return true
-}
 
 const makeStargateQuery = <
   Body = unknown,
@@ -182,6 +175,17 @@ export const cosmosContractStateKeyQuery = makeCosmWasmQuery(
     const data = await client.queryContractRaw(address, toUtf8(key))
     return data ? fromUtf8(data) : null
   }
+)
+
+export const cosmosNftInfoQuery = makeCosmWasmQuery(
+  'cosmos-nft-info',
+  ['collectionAddress', 'tokenId'],
+  (client, { collectionAddress, tokenId }) =>
+    client.queryContractSmart(collectionAddress, {
+      nft_info: {
+        token_id: tokenId,
+      },
+    })
 )
 
 // TODO: write generalizable cosmos RPC querier

@@ -7,6 +7,7 @@ import * as coingecko from './coingecko'
 import * as daodao from './daodao'
 import * as daodaoFeaturedDaos from './daodaoFeaturedDaos'
 import * as ibc from './ibc'
+import * as nft from './nft'
 import * as osmosis from './osmosis'
 import * as rpc from './rpc'
 import * as skip from './skip'
@@ -24,6 +25,7 @@ export const queries: Query<any, any>[] = [
   ...Object.values(skip),
   ...Object.values(stargaze),
   ...Object.values(whiteWhale),
+  ...Object.values(nft),
 ]
 
 // Verify that all queries have unique names.
