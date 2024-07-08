@@ -7,6 +7,8 @@ import { getAllRpcResponse, getRpcForChainId, retry } from '@dao-dao/utils'
 import { Query, QueryState, QueryType } from '@/types'
 import { validateChainId } from '@/utils'
 
+import { NftInfoResponse, OwnerOfResponse } from './types'
+
 type RpcClient = Awaited<
   ReturnType<typeof cosmos.ClientFactory.createRPCQueryClient>
 >['cosmos']
@@ -177,7 +179,7 @@ export const cosmosContractStateKeyQuery = makeCosmWasmQuery(
   }
 )
 
-export const cosmosNftInfoQuery = makeCosmWasmQuery(
+export const cosmosNftInfoQuery = makeCosmWasmQuery<NftInfoResponse>(
   'cosmos-nft-info',
   ['collectionAddress', 'tokenId'],
   (client, { collectionAddress, tokenId }) =>
@@ -186,6 +188,57 @@ export const cosmosNftInfoQuery = makeCosmWasmQuery(
         token_id: tokenId,
       },
     })
+)
+
+export const cosmosNftOwnerQuery = makeCosmWasmQuery<string>(
+  'cosmos-nft-owner',
+  ['collectionAddress', 'tokenId'],
+  async (client, { collectionAddress, tokenId }) =>
+    (
+      (await client.queryContractSmart(collectionAddress, {
+        owner_of: {
+          token_id: tokenId,
+        },
+      })) as OwnerOfResponse
+    ).owner
+)
+
+/**
+ * Get all NFTs staked by an address in a dao-voting-cw721-staked contract.
+ */
+export const cosmosStakedNftsByAddressQuery = makeCosmWasmQuery<string[]>(
+  'cosmos-staked-nfts-by-address',
+  ['daoVotingCw721StakedAddress', 'address'],
+  async (client, { daoVotingCw721StakedAddress, address }) => {
+    const tokens: string[] = []
+
+    const limit = 30
+    while (true) {
+      const response: string[] = await client.queryContractSmart(
+        daoVotingCw721StakedAddress,
+        {
+          staked_nfts: {
+            address,
+            start_after: tokens[tokens.length - 1],
+            limit,
+          },
+        }
+      )
+
+      if (!response?.length) {
+        break
+      }
+
+      tokens.push(...response)
+
+      // If we have less than the limit of items, we've exhausted them.
+      if (response.length < limit) {
+        break
+      }
+    }
+
+    return tokens
+  }
 )
 
 // TODO: write generalizable cosmos RPC querier

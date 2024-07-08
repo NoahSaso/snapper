@@ -7,9 +7,9 @@ import {
   DAO_CORE_CONTRACT_NAMES,
   INVALID_CONTRACT_ERROR_SUBSTRINGS,
   POLYTONE_CONFIG_PER_CHAIN,
-  encodeMessageAsBase64,
+  decodeJsonFromBase64,
+  encodeJsonToBase64,
   getChainForChainId,
-  parseEncodedMessage,
   polytoneNoteProxyMapToChainIdMap,
 } from '@dao-dao/utils'
 import uniq from 'lodash.uniq'
@@ -1333,10 +1333,10 @@ export const daodaoIndexerContractQuery: Query<
   // If args is defined, ensure it parses correctly. Otherwise, no args is also
   // valid.
   validate: ({ args }) =>
-    args ? parseEncodedMessage(args) !== undefined : true,
+    args ? decodeJsonFromBase64(args) !== undefined : true,
   url: ({ chainId, address, formula, args }) =>
     `https://indexer.daodao.zone/${chainId}/contract/${address}/${formula}?${new URLSearchParams(
-      parseEncodedMessage(args)
+      decodeJsonFromBase64(args)
     ).toString()}`,
   // Once every 5 seconds, since this may change at every chain block.
   ttl: 5,
@@ -1513,7 +1513,7 @@ export const daodaoReverseLookupPolytoneProxyQuery: Query<
       chainId,
       address: voice,
       formula: 'polytone/voice/remoteController',
-      args: encodeMessageAsBase64({
+      args: encodeJsonToBase64({
         address: proxy,
       }),
     })
