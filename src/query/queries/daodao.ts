@@ -1561,9 +1561,13 @@ export const daodaoIndexedChainsQuery: Query<string[]> = {
       }
 
       // Check if chain exists and is a mainnet.
-      const config = getChainForChainId(chainId)
-      if (config?.network_type === 'mainnet') {
-        return chainId
+      try {
+        const config = getChainForChainId(chainId)
+        if (config?.network_type === 'mainnet') {
+          return chainId
+        }
+      } catch {
+        return []
       }
 
       return []
