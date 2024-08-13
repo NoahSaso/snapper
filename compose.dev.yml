@@ -9,6 +9,7 @@ services:
     volumes:
       # use local files as source
       - .:/usr/src/app
+      - node_modules:/usr/src/app/node_modules
     environment:
       NODE_ENV: development
       REDIS_URL: redis://redis
