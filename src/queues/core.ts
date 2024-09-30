@@ -70,5 +70,8 @@ export const getBullWorker = <T extends unknown>(
       // Keep last 7 days of successful jobs.
       age: 7 * 24 * 60 * 60,
     },
-    // Keep all failed jobs.
+    removeOnFail: {
+      // Keep last 21 days of failed jobs.
+      age: 21 * 24 * 60 * 60,
+    },
   })
