@@ -304,7 +304,13 @@ export const fetchQuery = async <
   // stale-while-revalidate. We will manually examine `staleAt` when this is
   // queried in the future to determine whether or not to kick off a background
   // process to update the cache.
-  await redis.set(getQueryKey(query, params), JSON.stringify(queryState))
+  await redis.set(
+    getQueryKey(query, params),
+    JSON.stringify(queryState),
+    'EX',
+    // Expire after 1 week (seconds) to prevent wasting memory on unused keys.
+    7 * 24 * 60 * 60
+  )
 
   return {
     data: queryState,
