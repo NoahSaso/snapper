@@ -18,6 +18,7 @@ const serve = async () => {
   }
 
   server.register((instance, _opts, next) => {
+    instance.get('/', (_, reply) => reply.status(200).send('snap'))
     instance.get('/q/:query', query)
     next()
   })
