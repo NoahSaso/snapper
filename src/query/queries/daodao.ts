@@ -10,6 +10,7 @@ import {
   decodeJsonFromBase64,
   encodeJsonToBase64,
   getChainForChainId,
+  maybeGetChainForChainId,
   polytoneNoteProxyMapToChainIdMap,
 } from '@dao-dao/utils'
 import uniq from 'lodash.uniq'
@@ -1533,47 +1534,54 @@ export const daodaoReverseLookupPolytoneProxyQuery: Query<
 }
 
 /**
- * Fetch mainnet chain IDs that are indexed.
+ * Fetch all chain IDs that are indexed, including mainnets and testnets.
  */
-export const daodaoIndexedChainsQuery: Query<string[]> = {
+export const daodaoAllIndexedChainsQuery: Query<string[]> = {
   type: QueryType.Custom,
-  name: 'daodao-indexed-chains',
+  name: 'daodao-all-indexed-chains',
   execute: async () => {
     const client = new MeiliSearch({
       host: DAODAO_MEILISEARCH_HOST,
       apiKey: DAODAO_MEILISEARCH_API_KEY,
     })
 
-    // Get all mainnet chains with DAOs.
+    // Get all chains with DAOs.
     const chainIds = (
       await client.getIndexes({
         limit: 10000,
       })
     ).results.flatMap((index) => {
       const match = index.uid.match(/^(.+)_daos$/)
-      if (!match) {
-        return []
-      }
-
-      const chainId = match[1]
+      const chainId = match?.[1]
       if (!chainId) {
         return []
       }
 
-      // Check if chain exists and is a mainnet.
-      try {
-        const config = getChainForChainId(chainId)
-        if (config?.network_type === 'mainnet') {
-          return chainId
-        }
-      } catch {
+      // Check if chain exists.
+      if (!maybeGetChainForChainId(chainId)) {
         return []
       }
 
-      return []
+      return chainId
     })
 
     return chainIds
+  },
+  // Update once per day.
+  ttl: 24 * 60 * 60,
+}
+
+/**
+ * Fetch mainnet chain IDs that are indexed.
+ */
+export const daodaoIndexedChainsQuery: Query<string[]> = {
+  type: QueryType.Custom,
+  name: 'daodao-indexed-chains',
+  execute: async (_, query) => {
+    const { body: allChainIds } = await query(daodaoAllIndexedChainsQuery, {})
+    return allChainIds.filter(
+      (chainId) => getChainForChainId(chainId).network_type === 'mainnet'
+    )
   },
   // Update once per day.
   ttl: 24 * 60 * 60,
@@ -1846,4 +1854,60 @@ export const daodaoAllStatsQuery: Query<
   },
   // Update once per day.
   ttl: 24 * 60 * 60,
+}
+
+/**
+ * Resolve a DAO's info, including chain ID, from only its core address. This
+ * only works for indexed chains.
+ */
+export const daodaoDaoInfoQuery: Query<
+  any,
+  {
+    address: string
+  }
+> = {
+  type: QueryType.Custom,
+  name: 'daodao-dao-info',
+  parameters: ['address'],
+  execute: async ({ address }, query) => {
+    const { body: chainIds } = await query(daodaoAllIndexedChainsQuery, {})
+
+    const client = new MeiliSearch({
+      host: DAODAO_MEILISEARCH_HOST,
+      apiKey: DAODAO_MEILISEARCH_API_KEY,
+    })
+
+    // Return the first successful resolution.
+    let errors = 0
+    return await Promise.race(
+      chainIds.map((chainId) =>
+        client
+          .index(`${chainId}_daos`)
+          .getDocument(address)
+          .then((doc) => {
+            const mainnet =
+              getChainForChainId(chainId).network_type === 'mainnet'
+            return {
+              chainId,
+              url: `https://${mainnet ? '' : 'testnet.'}daodao.zone/dao/${address}`,
+              ...doc,
+            }
+          })
+          .catch(() => {
+            errors++
+
+            // If this is the last query and it failed, throw error to stop the
+            // race.
+            if (errors === chainIds.length) {
+              throw new Error('No DAO found')
+            }
+
+            // Return a never-resolving promise to keep the race going.
+            return new Promise(() => {})
+          })
+      )
+    )
+  },
+  // Never need to update this query.
+  ttl: 0,
 }
