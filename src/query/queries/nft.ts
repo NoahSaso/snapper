@@ -17,25 +17,9 @@ export const nftImageUrlQuery: Query<
   parameters: ['chainId', 'collectionAddress', 'tokenId'],
   validate: validateChainId,
   execute: async ({ chainId, collectionAddress, tokenId }, query) => {
-    const queryClient = makeReactQueryClient()
-
-    // Attempt to fetch from indexer.
-    let info: NftInfoResponse | null = await queryClient
-      .fetchQuery(
-        indexerQueries.queryContract(queryClient, {
-          chainId,
-          contractAddress: collectionAddress,
-          formula: 'cw721/nftInfo',
-          args: {
-            tokenId,
-          },
-          noFallback: true,
-        })
-      )
-      .catch(() => null)
-
-    // Fallback to chain.
-    info ||= (
+    // Don't use indexer for this query since different NFT contracts derive
+    // their info differently.
+    const info: NftInfoResponse = (
       await query(cosmosNftInfoQuery, {
         chainId,
         collectionAddress,
