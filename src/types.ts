@@ -42,7 +42,7 @@ export type QueryTypeUrlOptions<
   /**
    * Transform the response body.
    */
-  transform?: (body: Record<string, unknown>, params: Parameters) => Body
+  transform?: (body: any, params: Parameters) => Body
 }
 
 export type QueryTypeCustomOptions<
