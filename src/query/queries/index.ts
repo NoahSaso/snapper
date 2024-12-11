@@ -7,6 +7,7 @@ import * as coingecko from './coingecko'
 import * as contract from './contract'
 import * as daodao from './daodao'
 import * as daodaoFeaturedDaos from './daodaoFeaturedDaos'
+import * as eigenlayer from './eigenlayer'
 import * as ibc from './ibc'
 import * as nft from './nft'
 import * as osmosis from './osmosis'
@@ -21,6 +22,7 @@ export const queries: Query<any, any>[] = [
   ...Object.values(contract),
   ...Object.values(daodao),
   ...Object.values(daodaoFeaturedDaos),
+  ...Object.values(eigenlayer),
   ...Object.values(ibc),
   ...Object.values(osmosis),
   ...Object.values(rpc),
