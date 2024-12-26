@@ -1,3 +1,4 @@
+import { EIGENEXPLORER_API_KEY } from '@/config/env'
 import { Query, QueryType } from '@/types'
 
 const getEigenExplorerUrl = (chainId: string) =>
@@ -19,6 +20,12 @@ export const eigenExplorerApiQuery: Query<
   parameters: ['chainId', 'path'],
   validate: ({ chainId }) => !!getEigenExplorerUrl(chainId),
   url: ({ chainId, path }) => getEigenExplorerUrl(chainId) + path,
+  headers: () =>
+    EIGENEXPLORER_API_KEY
+      ? {
+          'x-api-token': EIGENEXPLORER_API_KEY,
+        }
+      : undefined,
   // Cache for 5 minutes.
   ttl: 5 * 60,
 }
