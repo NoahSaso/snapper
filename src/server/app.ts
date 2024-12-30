@@ -10,12 +10,15 @@ import { makeBullBoardRouter, query } from './routes'
 const serve = async () => {
   const server = Fastify()
 
-  if (ALLOWED_ORIGINS.length) {
-    server.register(cors, {
-      origin: ALLOWED_ORIGINS.map((origin) => new RegExp(origin)),
-    })
-    await server.after()
-  }
+  server.register(
+    cors,
+    ALLOWED_ORIGINS.length
+      ? {
+          origin: ALLOWED_ORIGINS.map((origin) => new RegExp(origin)),
+        }
+      : {}
+  )
+  await server.after()
 
   server.register((instance, _opts, next) => {
     instance.get('/', (_, reply) => reply.status(200).send('snap'))
