@@ -7,13 +7,15 @@ import * as coingecko from './coingecko'
 import * as contract from './contract'
 import * as daodao from './daodao'
 import * as daodaoFeaturedDaos from './daodaoFeaturedDaos'
-import * as eigenlayer from './eigenlayer'
+import * as eigenexplorer from './eigenexplorer'
 import * as ibc from './ibc'
+import * as moralis from './moralis'
 import * as nft from './nft'
 import * as osmosis from './osmosis'
 import * as rpc from './rpc'
 import * as skip from './skip'
 import * as stargaze from './stargaze'
+import * as token from './token'
 import * as whiteWhale from './whiteWhale'
 
 export const queries: Query<any, any>[] = [
@@ -22,14 +24,16 @@ export const queries: Query<any, any>[] = [
   ...Object.values(contract),
   ...Object.values(daodao),
   ...Object.values(daodaoFeaturedDaos),
-  ...Object.values(eigenlayer),
+  ...Object.values(eigenexplorer),
   ...Object.values(ibc),
+  ...Object.values(moralis),
+  ...Object.values(nft),
   ...Object.values(osmosis),
   ...Object.values(rpc),
   ...Object.values(skip),
   ...Object.values(stargaze),
+  ...Object.values(token),
   ...Object.values(whiteWhale),
-  ...Object.values(nft),
 ]
 
 // Verify that all queries have unique names.

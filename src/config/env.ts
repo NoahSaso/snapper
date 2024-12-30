@@ -46,6 +46,11 @@ export const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY || ''
 export const EIGENEXPLORER_API_KEY = process.env.EIGENEXPLORER_API_KEY || ''
 
 /**
+ * Moralis API Key.
+ */
+export const MORALIS_API_KEY = process.env.MORALIS_API_KEY || ''
+
+/**
  * DAO DAO Meilisearch instance for listing DAOs.
  */
 export const DAODAO_MEILISEARCH_HOST = process.env.DAODAO_MEILISEARCH_HOST || ''
