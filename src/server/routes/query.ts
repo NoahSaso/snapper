@@ -21,6 +21,14 @@ export const query = async (
     return
   }
 
+  const freshRequested =
+    !!req.query &&
+    typeof req.query === 'object' &&
+    'fresh' in req.query &&
+    (req.query.fresh === '' ||
+      req.query.fresh === 'true' ||
+      req.query.fresh === '1')
+
   // Validate query parameters.
   let params
   try {
@@ -37,6 +45,8 @@ export const query = async (
     queryState = await fetchQuery({
       query,
       params,
+      behavior:
+        freshRequested && query.allowFreshRequest ? 'forceFresh' : undefined,
       // Params validated above; no need to validate again.
       noValidate: true,
     })

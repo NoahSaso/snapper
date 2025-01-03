@@ -25,4 +25,5 @@ export const eigenExplorerApiQuery: Query<
   }),
   // Cache for 5 minutes.
   ttl: 5 * 60,
+  allowFreshRequest: true,
 }

@@ -91,6 +91,10 @@ export type Query<
    * Defaults to 60. Set to 0 to disable.
    */
   ttl: number | ((params: Parameters) => number)
+  /**
+   * Allow the query to forcibly be fetched fresh. Defaults to false.
+   */
+  allowFreshRequest?: boolean
 } & (
   | ({
       type: QueryType.Url
