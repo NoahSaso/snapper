@@ -1,5 +1,9 @@
+import crypto from 'crypto'
+import fs from 'fs'
+
 import { FastifyReply, FastifyRequest } from 'fastify'
 
+import { PRIVATE_KEY_FILE } from '@/config'
 import { fetchQuery, getQuery, validateQueryParams } from '@/query'
 
 export const query = async (
@@ -85,6 +89,18 @@ export const query = async (
     console.log(
       `${logPrefix} - 200 - ${queryState.cached ? 'cached' : 'not cached'} - ${queryState.stale ? 'stale' : 'fresh'} - ${elapsed.toLocaleString()}ms`
     )
+
+    // Sign the response with the private key if it exists.
+    if (fs.existsSync(PRIVATE_KEY_FILE)) {
+      const privateKey = fs.readFileSync(PRIVATE_KEY_FILE)
+      const signature = crypto.sign(
+        null,
+        Buffer.from(JSON.stringify(body)),
+        privateKey
+      )
+      reply.header('signature', signature.toString('base64'))
+    }
+
     reply.status(200).header('content-type', 'application/json').send(body)
   }
 }

@@ -3,3 +3,4 @@ dist/
 /scripts/
 .env
 dump.rdb
+*.pem

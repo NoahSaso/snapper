@@ -1,3 +1,5 @@
+import { MsgsDirectResponse, SkipClient } from '@skip-go/client'
+
 import { Query, QueryType } from '@/types'
 
 const SKIP_API_BASE = 'https://api.skip.money'
@@ -189,4 +191,106 @@ export const skipRecommendedAssetQuery: Query<
     )
   },
   ttl: skipRecommendedAssetsQuery.ttl,
+}
+
+export const skipGoMsgsDirectQuery: Query<
+  MsgsDirectResponse,
+  {
+    /**
+     * Chain ID of the source chain.
+     */
+    fromChainId: string
+    /**
+     * Denomination of the source asset.
+     */
+    fromDenom: string
+    /**
+     * Amount of the source asset to transfer.
+     */
+    amountIn: string
+    /**
+     * Chain ID of the destination chain.
+     */
+    toChainId: string
+    /**
+     * Denomination of the destination asset.
+     */
+    toDenom: string
+    /**
+     * Stringified JSON map of chain ID to address.
+     */
+    addresses: string
+    /**
+     * Slippage tolerance percentage.
+     */
+    slippageTolerancePercent?: string
+    /**
+     * IBC timeout in seconds.
+     */
+    timeoutSeconds?: string
+  }
+> = {
+  type: QueryType.Custom,
+  name: 'skip-go-msgs-direct',
+  parameters: [
+    'fromChainId',
+    'fromDenom',
+    'amountIn',
+    'toChainId',
+    'toDenom',
+    'addresses',
+    'slippageTolerancePercent',
+    'timeoutSeconds',
+  ],
+  validate: ({ addresses }) => {
+    const parsedAddresses = JSON.parse(addresses)
+
+    if (typeof parsedAddresses !== 'object') {
+      return new Error('Addresses must be a valid JSON object')
+    }
+
+    if (
+      Object.keys(parsedAddresses).length === 0 ||
+      !Object.entries(parsedAddresses).every(
+        ([chainId, address]) =>
+          typeof chainId === 'string' && typeof address === 'string'
+      )
+    ) {
+      return new Error(
+        'Addresses must be a non-empty JSON object with chain IDs as keys and addresses as values'
+      )
+    }
+
+    return true
+  },
+  execute: async ({
+    fromChainId,
+    fromDenom,
+    amountIn,
+    toChainId,
+    toDenom,
+    addresses,
+    slippageTolerancePercent,
+    timeoutSeconds,
+  }) =>
+    new SkipClient().msgsDirect({
+      sourceAssetChainID: fromChainId,
+      sourceAssetDenom: fromDenom,
+      destAssetChainID: toChainId,
+      destAssetDenom: toDenom,
+      amountIn,
+      chainIdsToAddresses: JSON.parse(addresses),
+      slippageTolerancePercent,
+      timeoutSeconds,
+
+      // Options.
+      allowUnsafe: false,
+      experimentalFeatures: ['cctp', 'hyperlane', 'stargate'],
+      allowMultiTx: false,
+      smartRelay: false,
+      allowSwaps: true,
+      goFast: false,
+    }),
+  // Don't cache.
+  ttl: 0,
 }

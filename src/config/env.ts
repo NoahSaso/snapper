@@ -1,3 +1,6 @@
+import fs from 'fs'
+import path from 'path'
+
 import dotenv from 'dotenv'
 
 dotenv.config()
@@ -56,3 +59,27 @@ export const MORALIS_API_KEY = process.env.MORALIS_API_KEY || ''
 export const DAODAO_MEILISEARCH_HOST = process.env.DAODAO_MEILISEARCH_HOST || ''
 export const DAODAO_MEILISEARCH_API_KEY =
   process.env.DAODAO_MEILISEARCH_API_KEY || ''
+
+/**
+ * Public key file.
+ */
+export const PUBLIC_KEY_FILE = path.join(
+  __dirname,
+  '../..',
+  process.env.PUBLIC_KEY_FILE || 'key.pub.pem'
+)
+
+/**
+ * Private key file.
+ */
+export const PRIVATE_KEY_FILE = path.join(
+  __dirname,
+  '../..',
+  process.env.PRIVATE_KEY_FILE || 'key.priv.pem'
+)
+
+if (!fs.existsSync(PUBLIC_KEY_FILE) || !fs.existsSync(PRIVATE_KEY_FILE)) {
+  console.warn(
+    `Public or private key file not found at ${PUBLIC_KEY_FILE} or ${PRIVATE_KEY_FILE}. Run "npm run generateKeyPair:default" to generate a key pair.`
+  )
+}

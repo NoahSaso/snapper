@@ -29,6 +29,18 @@ ideology. This ensures that Snapper balances responsiveness with freshness.
    cp .env.example .env
    ```
 
+4. Build the server:
+
+   ```sh
+   npm run build
+   ```
+
+5. Generate a key pair:
+
+   ```sh
+   npm run generateKeyPair:default
+   ```
+
 ### Configure server
 
 The available environment variables and their defaults are shown below.
@@ -114,6 +126,7 @@ into new queries.
 ## Usage
 
 Start redis server:
+
 ```sh
 redis-server
 ```
@@ -123,7 +136,7 @@ Run the node server:
 ```sh
 npm run serve
 
-### For hot reloading 
+### For hot reloading
 npm run serve:dev
 ```
 

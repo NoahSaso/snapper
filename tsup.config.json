@@ -1,10 +1,5 @@
 {
-  "entry": [
-    "src/server/app.ts",
-    "src/queues/process.ts",
-    "src/scripts/flushMatching.ts",
-    "src/scripts/flushQuery.ts"
-  ],
+  "entry": ["src/server/app.ts", "src/queues/process.ts", "src/scripts/*.ts"],
   "splitting": false,
   "sourcemap": false,
   "clean": true,

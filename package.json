@@ -14,6 +14,8 @@
     "process": "node dist/queues/process.js",
     "flushQuery": "node dist/scripts/flushQuery.js",
     "flushMatching": "node dist/scripts/flushMatching.js",
+    "generateKeyPair": "node dist/scripts/generateKeyPair.js",
+    "generateKeyPair:default": "node dist/scripts/generateKeyPair.js -f key",
     "start": "pm2-runtime start ecosystem.config.js",
     "start:dev": "docker compose -f compose.dev.yml up",
     "start:prod": "pm2 reload ecosystem.config.js"
@@ -57,6 +59,7 @@
     "@dao-dao/utils": "^2.4.2-rc.1",
     "@fastify/basic-auth": "^5.1.1",
     "@fastify/cors": "^9.0.1",
+    "@skip-go/client": "^0.16.4",
     "axios": "^1.6.7",
     "bullmq": "^5.7.12",
     "chain-registry": "1.59.4",

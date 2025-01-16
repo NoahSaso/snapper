@@ -5,7 +5,7 @@ import safeCompare from 'safe-compare'
 
 import { ADMIN_DASHBOARD_PASSWORD, ALLOWED_ORIGINS, HOST, PORT } from '@/config'
 
-import { makeBullBoardRouter, query } from './routes'
+import { makeBullBoardRouter, pk, query } from './routes'
 
 const serve = async () => {
   const server = Fastify()
@@ -22,6 +22,7 @@ const serve = async () => {
 
   server.register((instance, _opts, next) => {
     instance.get('/', (_, reply) => reply.status(200).send('snap'))
+    instance.get('/pk', pk)
     instance.get('/q/:query', query)
     next()
   })
