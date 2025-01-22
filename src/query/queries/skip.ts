@@ -250,6 +250,14 @@ export const skipGoMsgsDirectQuery: Query<
      * IBC timeout in seconds.
      */
     timeoutSeconds?: string
+    /**
+     * Whether to use smart relay.
+     */
+    smartRelay?: string
+    /**
+     * Whether to allow swaps.
+     */
+    allowSwaps?: string
   }
 > = {
   type: QueryType.Custom,
@@ -263,6 +271,8 @@ export const skipGoMsgsDirectQuery: Query<
     'addresses',
     'slippageTolerancePercent',
     'timeoutSeconds',
+    'smartRelay',
+    'allowSwaps',
   ],
   validate: ({ addresses }) => {
     const parsedAddresses = JSON.parse(addresses)
@@ -294,6 +304,8 @@ export const skipGoMsgsDirectQuery: Query<
     addresses,
     slippageTolerancePercent,
     timeoutSeconds,
+    smartRelay,
+    allowSwaps,
   }) =>
     new SkipClient().msgsDirect({
       sourceAssetChainID: fromChainId,
@@ -309,8 +321,8 @@ export const skipGoMsgsDirectQuery: Query<
       allowUnsafe: false,
       experimentalFeatures: ['cctp', 'hyperlane', 'stargate'],
       allowMultiTx: false,
-      smartRelay: false,
-      allowSwaps: true,
+      smartRelay: smartRelay === 'true' || smartRelay === '1',
+      allowSwaps: allowSwaps === 'true' || allowSwaps === '1',
       goFast: false,
     }),
   // Don't cache.
