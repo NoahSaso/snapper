@@ -47,10 +47,19 @@ export type SkipAssetRecommendation = {
   reason: string
 }
 
-export const skipChainsQuery: Query<SkipChain[]> = {
+export const skipChainsQuery: Query<
+  SkipChain[],
+  {
+    all?: string
+  }
+> = {
   type: QueryType.Url,
   name: 'skip-chains',
-  url: SKIP_API_BASE + '/v2/info/chains',
+  optionalParameters: ['all'],
+  url: ({ all }) =>
+    SKIP_API_BASE +
+    '/v2/info/chains' +
+    (all === 'true' || all === '1' ? '?include_evm=true&include_svm=true' : ''),
   transform: (body: any) => body?.chains || [],
   // Cache for a day.
   ttl: 24 * 60 * 60,
@@ -105,6 +114,19 @@ export const skipAssetsQuery: Query<
     '&include_cw20_assets=true',
   transform: (body: any, { chainId }) =>
     body?.chain_to_assets_map?.[chainId]?.assets || [],
+  // Cache for a day.
+  ttl: 24 * 60 * 60,
+}
+
+export const skipAllAssetsQuery: Query<
+  Record<string, { assets: SkipAsset[] }>
+> = {
+  type: QueryType.Url,
+  name: 'skip-all-assets',
+  url:
+    SKIP_API_BASE +
+    '/v2/fungible/assets?include_evm_assets=true&include_svm_assets=true',
+  transform: (body: any) => body?.chain_to_assets_map || {},
   // Cache for a day.
   ttl: 24 * 60 * 60,
 }
