@@ -111,7 +111,7 @@ export const skipAssetsQuery: Query<
     SKIP_API_BASE +
     '/v1/fungible/assets?chainId=' +
     chainId +
-    '&include_cw20_assets=true',
+    '&include_evm_assets=true&include_svm_assets=true&include_cw20_assets=true',
   transform: (body: any, { chainId }) =>
     body?.chain_to_assets_map?.[chainId]?.assets || [],
   // Cache for a day.
@@ -125,7 +125,7 @@ export const skipAllAssetsQuery: Query<
   name: 'skip-all-assets',
   url:
     SKIP_API_BASE +
-    '/v2/fungible/assets?include_evm_assets=true&include_svm_assets=true',
+    '/v2/fungible/assets?include_evm_assets=true&include_svm_assets=true&include_cw20_assets=true',
   transform: (body: any) => body?.chain_to_assets_map || {},
   // Cache for a day.
   ttl: 24 * 60 * 60,
