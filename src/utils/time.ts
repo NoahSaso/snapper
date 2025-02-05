@@ -63,7 +63,7 @@ export const getRangeBounds = (range: TimeRange, endDate = new Date()) => {
   return {
     start,
     end,
-    interval: rangeInterval[range],
+    interval,
   }
 }
 
