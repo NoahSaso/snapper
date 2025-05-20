@@ -19,7 +19,8 @@
     "generateKeyPair:default": "node dist/scripts/generateKeyPair.js -f key",
     "start": "pm2-runtime start ecosystem.config.js",
     "start:dev": "docker compose -f compose.dev.yml up",
-    "start:prod": "pm2 reload ecosystem.config.js"
+    "start:prod": "pm2 reload ecosystem.config.js",
+    "docker:build": "docker buildx build --platform linux/amd64 -t snapper ."
   },
   "license": "AGPL-3.0-only",
   "devDependencies": {

@@ -179,3 +179,18 @@ Run the tests:
 ```sh
 npm run test
 ```
+
+## Docker
+
+To build the Docker image, run:
+
+```bash
+npm run docker:build
+```
+
+To tag and push to a container registry, run:
+
+```bash
+docker tag snapper:latest your-registry/snapper:latest
+docker push your-registry/snapper:latest
+```
