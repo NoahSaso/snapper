@@ -150,20 +150,20 @@ export const daodaoCw20BalancesHistoryQuery: Query<
         : 24 * 60 * 60,
 }
 
-export const daodaoCommunityPoolQuery: Query<
-  // Map of denom to balance.
-  Record<string, string | undefined>,
-  {
-    chainId: string
-  }
-> = {
-  type: QueryType.Url,
-  name: 'daodao-community-pool',
-  parameters: ['chainId'],
-  url: ({ chainId }) =>
-    `https://indexer.daodao.zone/${chainId}/generic/_/communityPool/balances`,
-  ttl: 60,
-}
+// export const daodaoCommunityPoolQuery: Query<
+//   // Map of denom to balance.
+//   Record<string, string | undefined>,
+//   {
+//     chainId: string
+//   }
+// > = {
+//   type: QueryType.Url,
+//   name: 'daodao-community-pool',
+//   parameters: ['chainId'],
+//   url: ({ chainId }) =>
+//     `https://indexer.daodao.zone/${chainId}/generic/_/communityPool/balances`,
+//   ttl: 60,
+// }
 
 export const daodaoCommunityPoolHistoryQuery: Query<
   | {
@@ -241,13 +241,15 @@ export const daodaoValueQuery: Query<
     const isCommunityPool = address === COMMUNITY_POOL_ADDRESS_PLACEHOLDER
 
     // Check if the chain is indexed.
-    const communityPoolIsIndexed =
-      isCommunityPool &&
-      (
-        await query(daodaoChainIsIndexedQuery, {
-          chainId,
-        })
-      ).body
+    // const communityPoolIsIndexed =
+    //   isCommunityPool &&
+    //   (
+    //     await query(daodaoChainIsIndexedQuery, {
+    //       chainId,
+    //     })
+    //   ).body
+    // Not indexing this for any chains right now.
+    const communityPoolIsIndexed = false
 
     let communityPoolBody: Record<string, string | undefined>
     let nativeUnstakedBody: readonly Coin[]
@@ -260,16 +262,16 @@ export const daodaoValueQuery: Query<
     }[]
     try {
       const [
-        communityPoolIndexedBodyPromise,
+        // communityPoolIndexedBodyPromise,
         communityPoolNotIndexedBodyPromise,
         nativeBodyPromisesPromise,
         cw20BodyPromise,
       ] = await Promise.allSettled([
-        isCommunityPool && communityPoolIsIndexed
-          ? query(daodaoCommunityPoolQuery, {
-              chainId,
-            })
-          : { body: {} as Record<string, string | undefined> },
+        // isCommunityPool && communityPoolIsIndexed
+        //   ? query(daodaoCommunityPoolQuery, {
+        //       chainId,
+        //     })
+        //   : { body: {} as Record<string, string | undefined> },
         isCommunityPool && !communityPoolIsIndexed
           ? query(cosmosCommunityPoolBalancesQuery, {
               chainId,
@@ -309,16 +311,16 @@ export const daodaoValueQuery: Query<
 
       communityPoolBody =
         communityPoolIsIndexed &&
-        communityPoolIndexedBodyPromise.status === 'fulfilled'
+        /* communityPoolIndexedBodyPromise.status === 'fulfilled'
           ? communityPoolIndexedBodyPromise.value.body
-          : !communityPoolIsIndexed &&
-              communityPoolNotIndexedBodyPromise.status === 'fulfilled'
-            ? Object.fromEntries(
-                communityPoolNotIndexedBodyPromise.value.body.map(
-                  ({ denom, amount }) => [denom, amount]
-                )
+          : !communityPoolIsIndexed && */
+        communityPoolNotIndexedBodyPromise.status === 'fulfilled'
+          ? Object.fromEntries(
+              communityPoolNotIndexedBodyPromise.value.body.map(
+                ({ denom, amount }) => [denom, amount]
               )
-            : {}
+            )
+          : {}
       nativeUnstakedBody =
         nativeBodyPromises?.[0].status === 'fulfilled'
           ? nativeBodyPromises[0].value.body
