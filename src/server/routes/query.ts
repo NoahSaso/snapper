@@ -101,6 +101,12 @@ export const query = async (
       reply.header('signature', signature.toString('base64'))
     }
 
-    reply.status(200).header('content-type', 'application/json').send(body)
+    reply
+      .status(200)
+      .header('content-type', 'application/json')
+      .send(
+        // If string, encode as JSON.
+        typeof body === 'string' ? JSON.stringify(body) : body
+      )
   }
 }

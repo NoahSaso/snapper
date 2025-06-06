@@ -9,6 +9,7 @@
     "test": "NODE_ENV=test node --nolazy --inspect=0.0.0.0:9227 ./node_modules/.bin/jest --runInBand",
     "test:docker": "docker compose -f compose.test.yml up --exit-code-from test",
     "build": "tsc && tsup",
+    "build:only": "tsup",
     "build:watch": "tsup --watch",
     "serve": "node dist/server/app.js",
     "serve:dev": "npm run build:watch -- --onSuccess 'npm run serve'",
