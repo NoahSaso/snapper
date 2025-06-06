@@ -1856,3 +1856,30 @@ export const daodaoDaoInfoQuery: Query<
   // Never need to update this query.
   ttl: 0,
 }
+
+/**
+ * Fetch and cache indexer response for a variable TTL.
+ */
+export const daodaoIndexerQuery: Query<
+  any,
+  {
+    type: string
+    formula: string
+    chainId: string
+    address: string
+    args?: string
+    ttl?: string
+  }
+> = {
+  type: QueryType.Url,
+  name: 'daodao-indexer',
+  parameters: ['type', 'formula', 'chainId', 'address'],
+  optionalParameters: ['args', 'ttl'],
+  url: ({ type, formula, chainId, address, args }) =>
+    `https://indexer.daodao.zone/${chainId}/${type}/${address}/${formula}${args ? `?${args}` : ''}`,
+  // Set minimum to 1 second and maximum to 1 week. Default to 5 minutes.
+  ttl: ({ ttl }) =>
+    ttl && !isNaN(Number(ttl))
+      ? Math.min(Math.max(1, Number(ttl)), 7 * 24 * 60 * 60)
+      : 5 * 60,
+}
