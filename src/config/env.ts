@@ -63,20 +63,16 @@ export const DAODAO_MEILISEARCH_API_KEY =
 /**
  * Public key file.
  */
-export const PUBLIC_KEY_FILE = path.join(
-  __dirname,
-  '../..',
-  process.env.PUBLIC_KEY_FILE || 'key.pub.pem'
-)
+export const PUBLIC_KEY_FILE = process.env.PUBLIC_KEY_FILE
+  ? path.resolve(process.env.PUBLIC_KEY_FILE)
+  : path.join(__dirname, '../../key.pub.pem')
 
 /**
  * Private key file.
  */
-export const PRIVATE_KEY_FILE = path.join(
-  __dirname,
-  '../..',
-  process.env.PRIVATE_KEY_FILE || 'key.priv.pem'
-)
+export const PRIVATE_KEY_FILE = process.env.PRIVATE_KEY_FILE
+  ? path.resolve(process.env.PRIVATE_KEY_FILE)
+  : path.join(__dirname, '../../key.priv.pem')
 
 if (!fs.existsSync(PUBLIC_KEY_FILE) || !fs.existsSync(PRIVATE_KEY_FILE)) {
   console.warn(
