@@ -9,6 +9,9 @@ export const redis = new Redis({
   port: port ? Number(port) : undefined,
   username: username || undefined,
   password: password || undefined,
+  // TLS is required in the cloud.
+  ...(REDIS_URL.includes('rediss://') ? { tls: {} } : {}),
+  connectTimeout: 30_000,
   // Required for BullMQ
   maxRetriesPerRequest: null,
 })
