@@ -15,11 +15,6 @@ export const daodaoFeaturedDaosQuery: Query<
         'juno10h0hc64jv006rr8qy0zhlu4jsxct8qwa0vtaleayh0ujz0zynf2s2r7v8q',
     },
     {
-      chainId: 'juno-1',
-      coreAddress:
-        'juno1nmezpepv3lx45mndyctz2lzqxa6d9xzd2xumkxf7a6r4nxt0y95qypm6c0',
-    },
-    {
       chainId: 'neutron-1',
       coreAddress:
         'neutron1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrstdxvff',
@@ -28,11 +23,6 @@ export const daodaoFeaturedDaosQuery: Query<
       chainId: 'osmosis-1',
       coreAddress:
         'osmo1fq3wmetv8xme6v0fn53ujdmtazgz5f04vz3ta9d7qdz8gmrxwpwsy9kelc',
-    },
-    {
-      chainId: 'migaloo-1',
-      coreAddress:
-        'migaloo10zqfqhw44e6gvu97frjzcghunndskhu40uyztwu00y6dr9qxrz6qcjfrf7',
     },
     {
       chainId: 'Oraichain',
@@ -83,16 +73,6 @@ export const daodaoFeaturedDaosQuery: Query<
       chainId: 'neutron-1',
       coreAddress:
         'neutron1lqhw66n563pr2vszv4zqhjp7akwpd74vfj5gukh2crw45t5kfmvsa96ujv',
-    },
-    {
-      chainId: 'migaloo-1',
-      coreAddress:
-        'migaloo1pxuqr7je9h7slchdsgz5ufc3kklrevyfnxmq0dkjru5k6e6mdm2sw23hfz',
-    },
-    {
-      chainId: 'osmosis-1',
-      coreAddress:
-        'osmo106tvcj58rvdn9k36m9m3xcmcwk2c3fgft3ldcst9lgy05gcmjanqexru3h',
     },
     {
       chainId: 'osmosis-1',
