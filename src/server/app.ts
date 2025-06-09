@@ -20,6 +20,14 @@ const serve = async () => {
   )
   await server.after()
 
+  // Handle 404s gracefully
+  server.setNotFoundHandler((request, reply) => {
+    reply.status(404).send({
+      error: 'Not Found',
+      message: `Route ${request.method} ${request.url} not found`,
+    })
+  })
+
   server.register((instance, _opts, next) => {
     instance.get('/', (_, reply) => reply.status(200).send('snap'))
     instance.get('/health', health)
