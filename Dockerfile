@@ -15,5 +15,9 @@ RUN npm run build:only
 # Expose the API port
 EXPOSE 3000
 
-# Default command to run the server
-CMD ["node", "dist/server/serve.js"]
+# Make entrypoint script executable
+RUN chmod +x /app/docker-entrypoint.sh
+
+# Use entrypoint script, default to server
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
+CMD ["server"]
