@@ -13,7 +13,7 @@ COPY . .
 RUN npm run build
 
 # Expose the API port
-EXPOSE 3420
+EXPOSE 3000
 
 # Default command to run the server
 CMD ["node", "dist/server/serve.js"]
