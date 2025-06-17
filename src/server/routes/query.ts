@@ -55,7 +55,10 @@ export const query = async (
       noValidate: true,
     })
   } catch (err) {
-    console.error(`${logPrefix} - 500`, err)
+    console.error(
+      `${logPrefix} - 500`,
+      err instanceof Error ? err.message : `${err}`
+    )
     reply
       .status(500)
       .send(err instanceof Error ? err.message : `unknown error: ${err}`)
