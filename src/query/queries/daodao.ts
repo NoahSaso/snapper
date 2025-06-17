@@ -567,7 +567,7 @@ export const daodaoValueHistoryQuery: Query<
             !tokenFilter || tokenFilter.includes(contractAddress)
         )
         .map((contractAddress) => `cw20:${contractAddress}`),
-    ])
+    ]).filter(Boolean)
 
     const assets = (
       await Promise.all(
