@@ -64,7 +64,9 @@ export const validateQueryParams = async <
       (param) => !acceptedParams[param]
     )
     if (missingParams.length) {
-      throw new Error(`missing parameters: ${missingParams.join(', ')}`)
+      throw new Error(
+        `${query.name} missing parameters: ${missingParams.join(', ')}`
+      )
     }
   }
 

@@ -5,6 +5,7 @@ services:
     working_dir: /usr/src/app
     ports:
       - 3030:3000
+      - 3031:3001
       - 9227:9227 # debug
     volumes:
       # use local files as source
