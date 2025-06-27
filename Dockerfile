@@ -2,8 +2,10 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-# Copy package.json and package-lock.json first for better layer caching
+# Copy package.json, package-lock.json, and patches first for better layer
+# caching.
 COPY package*.json ./
+COPY patches ./patches
 RUN npm ci
 
 # Copy the rest of the application
