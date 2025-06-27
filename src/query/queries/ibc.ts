@@ -1,6 +1,12 @@
 import { IBCInfo } from '@chain-registry/types'
 import { ibc } from '@dao-dao/types/protobuf'
-import { getChainForChainId, getRpcForChainId, retry } from '@dao-dao/utils'
+import { IdentifiedChannel } from '@dao-dao/types/protobuf/codegen/ibc/core/channel/v1/channel'
+import {
+  getAllRpcResponse,
+  getChainForChainId,
+  getRpcForChainId,
+  retry,
+} from '@dao-dao/utils'
 
 import { Query, QueryType } from '@/types'
 
@@ -59,12 +65,12 @@ export const ibcTransferInfoQuery: Query<
     const info = (
       await Promise.allSettled([
         query(ibcChainRegistryQuery, {
-          a: srcChain.chain_name,
-          b: destChain.chain_name,
+          a: srcChain.chainName,
+          b: destChain.chainName,
         }),
         query(ibcChainRegistryQuery, {
-          a: destChain.chain_name,
-          b: srcChain.chain_name,
+          a: destChain.chainName,
+          b: srcChain.chainName,
         }),
       ])
     ).flatMap((result) =>
@@ -78,9 +84,9 @@ export const ibcTransferInfoQuery: Query<
     }
 
     const srcChainNumber =
-      info.chain_1.chain_name === srcChain.chain_name ? 1 : 2
+      info.chain_1.chain_name === srcChain.chainName ? 1 : 2
     const destChainNumber =
-      info.chain_1.chain_name === destChain.chain_name ? 1 : 2
+      info.chain_1.chain_name === destChain.chainName ? 1 : 2
     const channel = info.channels.find(
       ({
         [`chain_${srcChainNumber}` as `chain_${typeof srcChainNumber}`]:
@@ -156,6 +162,76 @@ export const icaRemoteAddressQuery: Query<
         }
       )
     ).address
+  },
+  // Cache for 1 hour.
+  ttl: 24 * 60,
+}
+
+export const icaChannelQuery: Query<
+  IdentifiedChannel,
+  {
+    address: string
+    srcChainId: string
+    destChainId: string
+  }
+> = {
+  type: QueryType.Custom,
+  name: 'ica-channel',
+  parameters: ['address', 'srcChainId', 'destChainId'],
+  validate: ({ srcChainId, destChainId }) => {
+    if (!getChainForChainId(srcChainId)) {
+      return Error('Invalid source chain.')
+    }
+    if (!getChainForChainId(destChainId)) {
+      return Error('Invalid destination chain.')
+    }
+    return true
+  },
+  execute: async ({ address, srcChainId, destChainId }, query) => {
+    const {
+      body: {
+        sourceChain: { connection_id },
+      },
+    } = await query(ibcTransferInfoQuery, {
+      srcChainId,
+      destChainId,
+    })
+
+    const client: Awaited<
+      ReturnType<typeof ibc.ClientFactory.createRPCQueryClient>
+    > = await retry(5, (attempt) =>
+      ibc.ClientFactory.createRPCQueryClient({
+        rpcEndpoint: getRpcForChainId(srcChainId, attempt),
+      })
+    )
+
+    // The port ID is derived from the address of the controller.
+    const controllerPortId = `icacontroller-${address}`
+
+    // Get all channels for the connection until we find the one for the
+    // controller.
+    const channels = await getAllRpcResponse(
+      client.ibc.core.channel.v1.connectionChannels.bind(
+        client.ibc.core.channel.v1
+      ),
+      {
+        connection: connection_id,
+      },
+      'channels',
+      undefined,
+      undefined,
+      (channels) => channels.some(({ portId }) => portId === controllerPortId)
+    )
+
+    // Attempt to find the channel for the controller.
+    const channel = channels.find(({ portId }) => portId === controllerPortId)
+    if (!channel) {
+      throw new Error(
+        `Failed to find ICA channel for address ${address} on chain ${srcChainId}.`
+      )
+    }
+
+    return channel
   },
   // Cache for 1 hour.
   ttl: 24 * 60,

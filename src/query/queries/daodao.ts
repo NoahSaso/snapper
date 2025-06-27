@@ -1525,7 +1525,8 @@ export const daodaoIndexedChainsQuery: Query<string[]> = {
   execute: async (_, query) => {
     const { body: allChainIds } = await query(daodaoAllIndexedChainsQuery, {})
     return allChainIds.filter(
-      (chainId) => getChainForChainId(chainId).network_type === 'mainnet'
+      (chainId) =>
+        getChainForChainId(chainId).chainRegistry?.network_type === 'mainnet'
     )
   },
   // Update once per day.
@@ -1831,7 +1832,8 @@ export const daodaoDaoInfoQuery: Query<
           .getDocument(address)
           .then((doc) => {
             const mainnet =
-              getChainForChainId(chainId).network_type === 'mainnet'
+              getChainForChainId(chainId).chainRegistry?.network_type ===
+              'mainnet'
             return {
               chainId,
               url: `https://${mainnet ? '' : 'testnet.'}daodao.zone/dao/${address}`,

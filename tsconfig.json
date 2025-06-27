@@ -14,9 +14,7 @@
     "baseUrl": "src",
     "skipLibCheck": true,
     "jsx": "preserve",
-    "paths": {
-      "@/*": ["*"]
-    }
+    "paths": { "@/*": ["*"] },
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*", "vitest.config.mts"],
 }

@@ -9,7 +9,7 @@
   },
   "overrides": [
     {
-      "files": ["**/*.d.ts", "**/*.ts"],
+      "files": ["**/*.d.ts", "**/*.ts", "**/*.mts"],
       "excludedFiles": ["**/node_modules/**", "**/dist/**"],
       "parser": "@typescript-eslint/parser",
       "plugins": ["@typescript-eslint", "import", "unused-imports"],
