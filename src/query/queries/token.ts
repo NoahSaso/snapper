@@ -1,4 +1,4 @@
-import { assets, chains } from 'chain-registry'
+import { assets, chains } from '@dao-dao/utils/constants/registry'
 
 import { Query, QueryType } from '@/types'
 
@@ -50,10 +50,10 @@ export const tokenPriceQuery: Query<
     ).body
     if (!asset) {
       // If asset not found, try the chain registry.
-      const chain = chains.find((c) => c.chain_id === chainId)
+      const chain = chains.find((c) => c.chainId === chainId)
       if (chain) {
         const foundAsset = assets
-          .find((a) => a.chain_name === chain.chain_name)
+          .find((a) => a.chain_name === chain.chainName)
           ?.assets.find((a) =>
             cw20 === 'true' ? a.address === denom : a.base === denom
           )
