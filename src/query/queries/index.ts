@@ -13,6 +13,7 @@ import * as moralis from './moralis'
 import * as nft from './nft'
 import * as osmosis from './osmosis'
 import * as rpc from './rpc'
+import * as rujira from './rujira'
 import * as skip from './skip'
 import * as stargaze from './stargaze'
 import * as token from './token'
@@ -30,6 +31,7 @@ export const queries: Query<any, any>[] = [
   ...Object.values(nft),
   ...Object.values(osmosis),
   ...Object.values(rpc),
+  ...Object.values(rujira),
   ...Object.values(skip),
   ...Object.values(stargaze),
   ...Object.values(token),

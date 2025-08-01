@@ -1,11 +1,13 @@
+import { assets, chains } from 'chain-registry'
+
 import { Query, QueryType } from '@/types'
 
 import { astroportResolvedPriceQuery } from './astroport'
 import { coingeckoPriceQuery } from './coingecko'
 import { moralisTokenPriceQuery } from './moralis'
 import { osmosisPriceQuery } from './osmosis'
+import { rujiraPriceQuery } from './rujira'
 import { skipAssetQuery } from './skip'
-import { whiteWhalePriceQuery } from './whiteWhale'
 
 export const tokenPriceQuery: Query<
   number,
@@ -32,13 +34,41 @@ export const tokenPriceQuery: Query<
       throw new Error('Holesky not supported')
     }
 
-    const { body: asset } = await query(skipAssetQuery, {
-      chainId,
-      denom,
-      cw20,
-    })
+    let asset:
+      | {
+          denom: string
+          symbol: string
+          recommended_symbol?: string
+          coingecko_id?: string
+        }
+      | undefined = (
+      await query(skipAssetQuery, {
+        chainId,
+        denom,
+        cw20,
+      })
+    ).body
     if (!asset) {
-      throw new Error('Asset not found')
+      // If asset not found, try the chain registry.
+      const chain = chains.find((c) => c.chain_id === chainId)
+      if (chain) {
+        const foundAsset = assets
+          .find((a) => a.chain_name === chain.chain_name)
+          ?.assets.find((a) =>
+            cw20 === 'true' ? a.address === denom : a.base === denom
+          )
+        if (foundAsset) {
+          asset = {
+            denom: foundAsset.base,
+            symbol: foundAsset.symbol,
+            coingecko_id: foundAsset.coingecko_id,
+          }
+        }
+      }
+
+      if (!asset) {
+        throw new Error('Asset not found')
+      }
     }
 
     // Load prices from all sources and use first that is available.
@@ -56,7 +86,7 @@ export const tokenPriceQuery: Query<
           chainId,
           denom: asset.denom,
         }),
-        query(whiteWhalePriceQuery, {
+        query(rujiraPriceQuery, {
           symbol: asset.symbol,
         }),
       ])
