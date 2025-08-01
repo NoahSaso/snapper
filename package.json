@@ -25,7 +25,7 @@
   },
   "license": "AGPL-3.0-only",
   "devDependencies": {
-    "@chain-registry/types": "0.50.159",
+    "@chain-registry/types": "^0.50.185",
     "@dao-dao/config": "^2.7.1-rc.2",
     "@swc/core": "^1.4.16",
     "@types/busboy": "^1.5.3",
@@ -66,7 +66,7 @@
     "@skip-go/client": "^0.16.4",
     "axios": "^1.6.7",
     "bullmq": "^5.7.12",
-    "chain-registry": "1.69.254",
+    "chain-registry": "^1.69.294",
     "commander": "^12.0.0",
     "dotenv": "^16.4.4",
     "ethers": "^6.13.4",
